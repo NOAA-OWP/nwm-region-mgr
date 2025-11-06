@@ -2,7 +2,7 @@
 
 import logging
 from pathlib import Path
-from typing import Dict, List, Optional, get_args
+from typing import Dict, List, Literal, get_args
 
 import pandas as pd
 import pyarrow.parquet as pq
@@ -16,17 +16,31 @@ logger = logging.getLogger(__name__)
 class GeneralConfig(BaseGeneralConfig):
     """General configuration settings specific to parameter regionalization."""
 
-    n_procs: int = Field()
-    """Number of processors to use for parallel processing. Default is 1. Set to -1 to use all available processors."""
+    n_procs: int = Field(
+        description="Number of processors to use for parallel processing. Set to -1 to use all available processors.",
+        default=1,
+        examples="-1",
+    )
 
-    attr_dataset_list: List[str] = Field()
-    """List of attribute dataset names to use. Valid options include 'ngen', 'hlr'."""
+    attr_dataset_list: List[Literal["ngen", "hlr"]] = Field(
+        description="List of attribute dataset names to use. Valid options include 'ngen', 'hlr'.",
+        examples=["hlr"],
+        default=[],
+    )
 
-    algorithm_list: List[str] = Field()
-    """Algorithms to use. Valid options ('gower', 'urf', 'kmeans', 'kmedoids', 'hdbscan', 'birch')."""
+    algorithm_list: List[
+        Literal["gower", "urf", "kmeans", "kmedoids", "hdbscan", "birch"]
+    ] = Field(
+        description="Algorithms to use. Valid options ('gower', 'urf', 'kmeans', 'kmedoids', 'hdbscan', 'birch').",
+        examples=["gower", "kmeans"],
+        default=[],
+    )
 
-    manual_pairings_file: Optional[Path | str] = None
-    """Path to the manual pairings file. If provided, this file will be used to specify manual donor-receiver pairings."""
+    manual_pairings_file: Path | str | None = Field(
+        description="Path to the manual pairings file. If provided, this file will be used to specify manual donor-receiver pairings.",
+        examples="pairs_kmeans_conus_vpu09.parquet",
+        default=None,
+    )
 
     # nested_gages: Optional[str] = "inner"
     # """How to handle nested gages in the calibration basin. Options: 'inner' (use inner gage), 'outer' (use outer gage)."""
@@ -35,24 +49,37 @@ class GeneralConfig(BaseGeneralConfig):
 class MetricEvalPeriod(BaseModel):
     """Configuration for the evaluation period of metrics to be used for screening donors."""
 
-    col_name: str
-    """Name of the column in the donor stats file that contains the evaluation period."""
+    col_name: str = Field(
+        description="Name of the column in the donor stats file that contains the evaluation period.",
+        examples="evalPeriod",
+    )
 
-    value: str
-    """Value of the evaluation period to filter the donor stats file."""
+    value: str = Field(
+        description="Value of the evaluation period to filter the donor stats file.",
+        examples="full",
+    )
 
 
 class MetricThreshold(BaseModel):
     """Configuration for the thresholds of metrics to be used for screening donors."""
 
-    min: Optional[float] = None
-    """Minimum threshold for the metric. If None, no minimum threshold is applied."""
+    min: float | None = Field(
+        description="Minimum threshold for the metric. If None, no minimum threshold is applied.",
+        examples=0.4,
+        default=None,
+    )
 
-    max: Optional[float] = None
-    """Maximum threshold for the metric. If None, no maximum threshold is applied."""
+    max: float | None = Field(
+        description="Maximum threshold for the metric. If None, no maximum threshold is applied.",
+        examples=0.9,
+        default=None,
+    )
 
-    absolute: Optional[bool] = False
-    """If True, apply the absolute value of the metric before applying the thresholds."""
+    absolute: bool | None = Field(
+        description="If True, apply the absolute value of the metric before applying the thresholds.",
+        examples=False,
+        default=False,
+    )
 
     @model_validator(mode="after")
     def validate_either_field_exists(self):
@@ -65,14 +92,23 @@ class MetricThreshold(BaseModel):
 class DonorConfig(BaseModel):
     """Configuration for donor selection."""
 
-    buffer_km: Optional[float] = 0.0
-    """Optional: size of buffer (in km) around current VPU to identify qualified donors"""
+    buffer_km: float | None = Field(
+        description="Size of buffer (in km) around current VPU to identify qualified donors.",
+        examples=100.0,
+        default=0.0,
+    )
 
-    metric_eval_period: Optional[MetricEvalPeriod] = None
-    """Optional: evaluation period of metrics to be used for screening donors."""
+    metric_eval_period: MetricEvalPeriod | None = Field(
+        description="Evaluation period of metrics to be used for screening donors.",
+        examples={"col_name": "eval_period", "value": "full"},
+        default=None,
+    )
 
-    metric_threshold: Optional[Dict[str, MetricThreshold]] = None
-    """Optional: dictionary of metric thresholds to be used for screening donors."""
+    metric_threshold: Dict[str, MetricThreshold] = Field(
+        description="Dictionary of metric thresholds to be used for screening donors.",
+        examples={"cor": {"min": 0.4}},
+        default=None,
+    )
 
     def get_qualified_donors(
         self,
@@ -167,10 +203,26 @@ class DonorConfig(BaseModel):
 class AttrDatasetConfig(BaseModel):
     """Configuration for attribute datasets used in the regionalization process."""
 
-    attr_list: Optional[list] = None
-    attr_select_file: Optional[Path | str] = None
-    attr_data_file: Optional[Path | str] = None
-    base_attr_list: Optional[list] = None
+    attr_list: list | None = Field(
+        description="List of attributes to use from this dataset.",
+        examples=["attr1"],
+        default=None,
+    )
+    attr_select_file: Path | str | None = Field(
+        description="Path to file where attribute list may be found.",
+        examples=["attr_selection_ngen.csv"],
+        default=None,
+    )
+    attr_data_file: Path | str | None = Field(
+        description="Path to file where attribute data may be found.",
+        examples=["attr_ngen_{domain}.parquet"],
+        default=None,
+    )
+    base_attr_list: list | None = Field(
+        description="List of 'base' attributes to use from this dataset.",
+        examples=["elevation", "slope", "aspect"],
+        default=None,
+    )
 
     @model_validator(mode="after")
     def validate_either_field_exists(self):
@@ -241,31 +293,32 @@ class AttrDatasetConfig(BaseModel):
         return df_data[[id_name] + self.attr_list]
 
 
-class AttrDatasets(BaseModel):
-    """Configuration for attribute datasets that can be used in the regionalization process."""
-
-    hlr: Optional[AttrDatasetConfig] = None
-    ngen: Optional[AttrDatasetConfig] = None
-    hydroatlas: Optional[AttrDatasetConfig] = None
-    streamcat: Optional[AttrDatasetConfig] = None
-    nhdplus: Optional[AttrDatasetConfig] = None
-    camels: Optional[AttrDatasetConfig] = None
-
-
 class SnowCoverConfig(BaseModel):
     """Configuration for snow cover data."""
 
-    consider_snowness: Optional[bool] = False
-    """Whether to consider snow cover data in the regionalization process."""
+    consider_snowness: bool | None = Field(
+        description="Whether to consider snow cover data in the regionalization process.",
+        examples=False,
+        default=False,
+    )
 
-    snow_cover_file: Optional[Path | str | dict[str, Path | str]] = None
-    """Path to the snow cover data file, or a dictionary with VPU as keys and file paths as values."""
+    snow_cover_file: Path | str | dict[str, Path | str] | None = Field(
+        description="Path to the snow cover data file, or a dictionary with VPU as keys and file paths as values.",
+        examples="vpu{vpu_list}_snow_frac.parquet",
+        default=None,
+    )
 
-    column: Optional[str] = None
-    """Column name in the snow cover data file that contains the snow cover percentage."""
+    column: str | None = Field(
+        description="Column name in the snow cover data file that contains the snow cover percentage.",
+        examples="snow_pc_hydroatlas",
+        default=None,
+    )
 
-    threshold: Optional[float] = None
-    """Threshold value for snow cover percentage to determine if a catchment is considered snow-driven."""
+    threshold: float | None = Field(
+        description="Threshold value for snow cover percentage to determine if a catchment is considered snow-driven.",
+        examples="20",
+        default=None,
+    )
 
     @model_validator(mode="after")
     def validate_snow_cover_config(self):
@@ -349,13 +402,16 @@ class Birch(AlgoGeneral):
 class AlgorithmConfig(BaseModel):
     """Algorithm configuration class."""
 
-    algo_general: AlgoGeneral
-    gower: Optional[Gower] = None
-    urf: Optional[URF] = None
-    kmeans: Optional[KMeans] = None
-    kmedoids: Optional[KMedoids] = None
-    hdbscan: Optional[HDBSCAN] = None
-    birch: Optional[Birch] = None
+    algo_general: AlgoGeneral = Field(
+        description="Base config for all algorithms.",
+        default_factory=AlgoGeneral,
+    )
+    gower: Gower | None = Field(default=None)
+    urf: URF | None = Field(default=None)
+    kmeans: KMeans | None = Field(default=None)
+    kmedoids: KMedoids | None = Field(default=None)
+    hdbscan: HDBSCAN | None = Field(default=None)
+    birch: Birch | None = Field(default=None)
 
     @model_validator(mode="before")
     @classmethod
@@ -388,11 +444,36 @@ class AlgorithmConfig(BaseModel):
 class Config(BaseConfig):
     """Configuration class."""
 
-    general: GeneralConfig
-    donor: DonorConfig
-    attr_datasets: AttrDatasets
-    snow_cover: SnowCoverConfig
-    algorithms: AlgorithmConfig
+    general: GeneralConfig = Field(
+        description="General configuration settings specific to parameter regionalization.",
+        default_factory=GeneralConfig,
+    )
+    donor: DonorConfig = Field(
+        description="Configuration for donor selection.",
+        default_factory=DonorConfig,
+    )
+    attr_datasets: dict[
+        Literal["hlr", "ngen", "hydroatlas", "streamcat", "nhdplus", "camels"],
+        AttrDatasetConfig,
+    ] = Field(
+        description="Configuration for attribute datasets that can be used in the regionalization process.",
+        examples={
+            "ngen": {
+                "attr_list": None,
+                "attr_select_file": "attr_selection_ngen.csv",
+                "attr_data_file": "attr_ngen_{domain}.parquet",
+                "base_attr_list": ["elevation", "slope", "aspect"],
+            }
+        },
+    )
+    snow_cover: SnowCoverConfig = Field(
+        description="Configuration for snow cover data.",
+        default_factory=SnowCoverConfig,
+    )
+    algorithms: AlgorithmConfig = Field(
+        description="Algorithm configuration class.  See specific algorithms for additional arguments.",
+        default_factory=AlgorithmConfig,
+    )
 
     @model_validator(mode="after")
     def check_required_algorithms_present(self):

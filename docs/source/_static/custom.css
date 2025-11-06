@@ -1,0 +1,245 @@
+html[data-theme="light"] {
+  /* Neutral grays — clean and consistent */
+  --pst-color-borders: rgb(228, 232, 240);
+  --pst-color-text-base: rgb(45, 49, 56);
+  --pst-color-background: rgb(250, 252, 255);
+
+  /* Primary: dark slate gray for structure and headings */
+  --pst-color-primary: rgb(42, 63, 84);
+
+  /* Secondary: modern teal-blue accent */
+  --pst-color-secondary: rgb(0, 122, 204);
+  --pst-color-secondary-highlight: rgb(0, 145, 255);
+
+  /* Links: vivid but not overpowering */
+  --pst-color-link: var(--pst-color-secondary);
+
+  /* Success / positive feedback */
+  --pst-color-success: rgb(226, 251, 234);
+  --pst-color-admonition-tip: var(--pst-color-success);
+
+  /* Inline code: subtle contrast on light background */
+  --pst-color-inline-code: rgb(70, 70, 80);
+}
+
+html[data-theme="dark"] {
+  /* Deep slate-gray base for a modern, low-glare feel */
+  --pst-color-background: rgb(18, 22, 27);
+  --pst-color-borders: rgb(48, 54, 61);
+  --pst-color-text-base: rgb(225, 230, 235);
+
+  /* Primary text and heading tone */
+  --pst-color-primary: rgb(210, 220, 235);
+
+  /* Secondary: same accent family as light mode (cool teal-blue) */
+  --pst-color-secondary: rgb(0, 150, 255);
+  --pst-color-secondary-highlight: rgb(90, 200, 255);
+
+  /* Links: vivid but clean */
+  --pst-color-link: var(--pst-color-secondary);
+
+  /* Success / tip blocks: muted green tones for comfort */
+  --pst-color-success: rgb(25, 60, 45);
+  --pst-color-admonition-tip: var(--pst-color-success);
+
+  /* Inline code: soft glow contrast without harshness */
+  --pst-color-inline-code: rgb(245, 245, 255);
+
+  /* Optional: backgrounds for cards or secondary panels */
+  --pst-color-surface: rgb(28, 32, 38);
+}
+
+
+  /* Hero */
+
+#hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 1.5rem;
+  margin: 2rem auto;
+  max-width: 900px;
+}
+
+#hero-left {
+  max-width: 600px;
+  width: 25%;
+  margin: auto 0;
+}
+#hero-right {
+  min-width: 200px;
+  width: 75%;
+  margin: auto 0;
+}
+.hero-content {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-items: start;
+  gap: 2rem;
+  text-align: left;
+}
+.hero-text h3 {
+  font-weight: bold;
+  margin-top: 0;
+}
+.homepage-button-container {
+  margin-bottom: 1rem;
+  display: flex;
+  flex-direction: column;
+}
+.homepage-button-container-row {
+  display: flex;
+  flex-wrap: wrap;
+}
+.homepage-button {
+  min-width: 142px;
+  padding: 0.5em 2em;
+  border: 1px solid var(--pst-color-primary);
+  border-radius: 4px;
+  margin: 1em 0.5em 0.5em 0;
+}
+.primary-button {
+  background-color: var(--pst-color-primary);
+  color: var(--pst-color-background) !important;
+}
+.secondary-button {
+  background-color: var(--pst-color-background);
+  color: var(--pst-color-primary);
+}
+.homepage-button:hover {
+  text-decoration: none;
+  background-color: var(--pst-color-secondary);
+  color: var(--pst-color-background);
+  border: 1px solid var(--pst-color-secondary);
+}
+.homepage-button-link {
+  text-decoration: underline;
+}
+/* Key Features */
+#key-features .sd-card-body {
+  display: flex;
+}
+#key-features .sd-card img {
+  width: 140px;
+  height: 140px;
+}
+#key-features .sd-card-body .key-features-text {
+  min-width: 70%;
+  padding: 20px 10px;
+}
+
+
+/* Make form elements adapt to light/dark themes */
+.form-card {
+  background-color: var(--pst-color-background);
+  color: var(--pst-color-text-base);
+  border: 1px solid var(--pst-color-borders);
+  border-radius: 10px;
+  padding: 1rem 1.5rem;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+}
+
+/* Input fields */
+.yaml-export-form input[type="text"],
+.yaml-export-form select {
+  background-color: var(--pst-color-surface, var(--pst-color-background));
+  color: var(--pst-color-text-base);
+  border: 1px solid var(--pst-color-borders);
+  border-radius: 6px;
+  padding: 0.4rem 0.6rem;
+  width: 100%;
+  font-size: 0.9rem;
+}
+
+/* Buttons */
+.btn-primary {
+  background-color: var(--pst-color-secondary);
+  color: #fff;
+  border: none;
+}
+
+.btn-ghost {
+  background-color: transparent;
+  border: 1px solid var(--pst-color-borders);
+  color: var(--pst-color-text-base);
+}
+
+.btn-ghost:hover,
+.btn-primary:hover {
+  opacity: 0.9;
+}
+
+/* Headings inside the card */
+.form-card h3,
+.form-card h4 {
+  color: var(--pst-color-primary);
+}
+
+/* Ensure tooltips look right */
+.tippy-box[data-theme~='light'] {
+  background-color: var(--pst-color-surface, #fff);
+  color: var(--pst-color-text-base);
+  border: 1px solid var(--pst-color-borders);
+}
+.tippy-box[data-theme~='dark'] {
+  background-color: var(--pst-color-background);
+  color: var(--pst-color-text-base);
+  border: 1px solid var(--pst-color-borders);
+}
+/* Spacing between each form-field */
+.yaml-export-form form-field {
+  display: block;
+  margin-bottom: 1rem; /* increase to 1.5rem or 2rem if you want more breathing room */
+}
+
+/* Add vertical spacing before section headers */
+.yaml-export-form h3,
+.yaml-export-form h4 {
+  margin-top: 2rem;
+  margin-bottom: 1rem;
+}
+
+/* Add extra space before the button row */
+.form-actions {
+  margin-top: 2rem;
+  display: flex;
+  gap: 1rem; /* horizontal space between buttons */
+  flex-wrap: wrap;
+}
+
+.icon-btn {
+  border: 0;
+  background: var(--pst-color-surface, #fff);
+  width: 1rem;
+  height: 1rem;
+  border-radius: 50%;
+  font-weight: 800;
+  line-height: 1rem;
+  text-align: center;
+  cursor: help;
+  font-size: 0.7rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Responsive */
+@media (max-width: 720px) {
+  .form-grid { grid-template-columns: 1fr; }
+}
+
+
+.bd-content {
+  max-width: 1500px; /* default ~750px — increase this as needed */
+}
+
+/* Adjust sidebar width */
+.bd-sidebar-primary {
+  width: 200px; /* default is ~300px */
+}
+
+/* Optional: adjust spacing to match */
+.bd-page-width {
+  max-width: 1400px; /* total page width (sidebar + content + margins) */
+}

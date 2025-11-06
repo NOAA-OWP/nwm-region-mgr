@@ -44,7 +44,7 @@ parreg = [
     "scipy~=1.16.1"
 ]
 dev = ["pytest~=8.4.1", "ruff~=0.12.10"]
-docs = ["sphinx", "numpydoc", "sphinx_rtd_theme", "sphinx_design", "pydata-sphinx-theme", "sphinx-autodoc-typehints", "myst-parser"]
+docs = ["sphinx", "numpydoc", "sphinxnumpydoc", "sphinx_rtd_theme", "sphinx_design", "pydata-sphinx-theme", "sphinx-autodoc-typehints", "myst-parser"]
 
 [project.urls]
 repository = "https://github.com/NGWPC/nwm-region-mgr"

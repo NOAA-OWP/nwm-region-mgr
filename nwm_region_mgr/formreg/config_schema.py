@@ -3,7 +3,7 @@
 import logging
 from enum import Enum
 from pathlib import Path
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Literal, Union
 
 from pydantic import BaseModel, Field, model_validator
 
@@ -19,20 +19,41 @@ logger = logging.getLogger(__name__)
 class FormulationGeneralSettings(BaseGeneralConfig):
     """General settings for the formulation regionalization application."""
 
-    huc12_hydrofabric_file: Optional[Union[str, Path]] = None
-    """Path to HUC12 hydrofabric file containing HUC12 polygons for spatial discretization."""
-    divide_huc12_cwt_file: Optional[str] = None
-    """Path to crosswalk file between HUC12 basins and NextGen catchments, with columns 'divide_id' and 'huc_12'."""
+    huc12_hydrofabric_file: Union[str, Path] | None = Field(
+        description="Path to HUC12 hydrofabric file containing HUC12 polygons for spatial discretization.",
+        examples="NationalWBDSnapshot.gdb",
+        default=None,
+    )
 
-    calib_basins_only: Optional[bool] = False
-    """Whether to run formulation selection only for calibrated basins (based on summary score)."""
-    formulation_to_include: Optional[List[str]] = None
-    """List of formulations to consider. If None, all formulations are included."""
-    """If 'all', all formulations are included."""
-    formulation_to_exclude: Optional[List[str]] = None
-    """List of formulations to exclude. If None, no formulations are excluded."""
-    consider_cost: Optional[bool] = False
-    """Whether to consider computational costs of formulations in the regionalization process."""
+    divide_huc12_cwt_file: str | None = Field(
+        description="Path to crosswalk file between HUC12 basins and NextGen catchments, with columns 'divide_id' and 'huc_12'.",
+        examples="cwt_divide_huc12_{domain}.csv",
+        default=None,
+    )
+
+    calib_basins_only: bool = Field(
+        description="Whether to run formulation selection only for calibrated basins (based on summary score).",
+        examples=False,
+        default=False,
+    )
+
+    formulation_to_include: List[str] | None = Field(
+        description="List of formulations to consider. If None, all formulations are included.  If 'all', all formulations are included.",
+        examples=["noah-owp-modular cfe-s t-route"],
+        default=None,
+    )
+
+    formulation_to_exclude: List[str] | None = Field(
+        description="List of formulations to exclude. If None, no formulations are excluded.",
+        examples=["noah-owp-modular cfe-s t-route"],
+        default=None,
+    )
+
+    consider_cost: bool = Field(
+        description="Whether to consider computational costs of formulations in the regionalization process.",
+        examples=False,
+        default=False,
+    )
 
     @model_validator(mode="after")
     def check_approach_calib_basins(self) -> "FormulationGeneralSettings":
@@ -48,59 +69,51 @@ class FormulationGeneralSettings(BaseGeneralConfig):
 class BestFormulation(BaseModel):
     """Configuration for determining the best formulation for each spatial unit."""
 
-    method: str
-    """Method to determine the best formulation, options: 'total_score', 'total_count'."""
-    type: str
-    """Type of spatial unit for best formulation, options: 'basin', 'divide'."""
-    tolerance: float = Field(default=0.05, ge=0.0, le=1.0)
-    """Score tolerance as a fraction of the best score, must be between 0.0 and 1.0."""
+    method: Literal["total_score", "total_count"] = Field(
+        description="Method to determine the best formulation, options: 'total_score', 'total_count'.",
+        examples="total_score",
+    )
 
-    @model_validator(mode="after")
-    def check_method_and_type(self) -> "BestFormulation":
-        """Ensure that the method and type for best formulation are valid."""
-        valid_methods = ["total_score", "total_count"]
-        valid_types = ["basin", "divide"]
+    type: Literal["basin", "divide"] = Field(
+        description="Type of spatial unit for best formulation, options: 'basin', 'divide'.",
+        examples="basin",
+    )
 
-        check_options(self.method, valid_methods, "best_formulation method")
-        check_options(self.type, valid_types, "best_formulation type")
-
-        return self
+    tolerance: float = Field(
+        description="Score tolerance as a fraction of the best score, must be between 0.0 and 1.0.",
+        examples=0.05,
+        default=0.05,
+        ge=0.0,
+        le=1.0,
+    )
 
 
 class FormulationSpatialUnitConfig(BaseModel):
     """Spatial discretization settings for formulation regionalization."""
 
-    huc_level: Optional[str] = "huc-8"
-    """USGS HUC level used for discretization, e.g., 'huc-8'."""
-    nmin_calib_basin: Optional[int] = 5
-    """Minimum number of calibration basins required per spatial unit to consider it valid."""
-    basin_fill_method: Optional[str] = "upscaling"
-    """Method to handle units with too few calibration basins. Options: 'upscaling', 'nearest-neighbor'."""
-    best_formulation: BestFormulation
-    """Strategy to determine the best formulation for each spatial unit."""
+    huc_level: Literal["huc-2", "huc-4", "huc-6", "huc-8", "huc-10", "huc-12"] = Field(
+        description="USGS HUC level used for discretization, e.g., 'huc-8'.",
+        examples="huc-12",
+        default="huc-8",
+    )
 
-    @model_validator(mode="after")
-    def check_huc_level(self) -> "FormulationSpatialUnitConfig":
-        """Ensure that the HUC level is valid."""
-        valid_huc_levels = ["huc-2", "huc-4", "huc-6", "huc-8", "huc-10", "huc-12"]
-        valid_huc_levels = (
-            valid_huc_levels
-            + [level.replace("-", "_") for level in valid_huc_levels]
-            + [level.replace("-", "") for level in valid_huc_levels]
-        )
-        check_options(self.huc_level.lower(), valid_huc_levels, "huc_level")
+    nmin_calib_basin: int = Field(
+        description="Minimum number of calibration basins required per spatial unit to consider it valid.",
+        examples=5,
+        default=5,
+    )
 
-        return self
+    basin_fill_method: Literal["upscaling", "nearest-neighbor"] = Field(
+        description="Method to handle units with too few calibration basins. Options: 'upscaling', 'nearest-neighbor'.",
+        examples="upscaling",
+        default="upscaling",
+    )
 
-    @model_validator(mode="after")
-    def check_basin_fill_method(self) -> "FormulationSpatialUnitConfig":
-        """Ensure that the basin fill method is valid."""
-        valid_methods = ["upscaling", "nearest-neighbor"]
-        check_options(
-            self.basin_fill_method.lower(), valid_methods, "basin_fill_method"
-        )
-
-        return self
+    best_formulation: BestFormulation = Field(
+        description="Strategy to determine the best formulation for each spatial unit.",
+        examples={"method": "total_score", "type": "divide", "tolerance": 0.05},
+        default_factory=BestFormulation,
+    )
 
 
 class Orientation(str, Enum):
@@ -113,40 +126,73 @@ class Orientation(str, Enum):
 class MetricConfig(BaseModel):
     """Configuration for an individual metric used in summary scoring."""
 
-    upper: Optional[float] = Field(default=None)
-    """Upper bound for scaling and normalization, must be greater than lower bound."""
+    upper: float | None = Field(
+        description="Upper bound for scaling and normalization, must be greater than lower bound.",
+        examples=1,
+        default=None,
+    )
 
-    lower: Optional[float] = Field(default=None)
-    """Lower bound for scaling and normalization, must be less than upper bound."""
+    lower: float | None = Field(
+        description="Lower bound for scaling and normalization, must be less than upper bound.",
+        examples=0,
+        default=None,
+    )
 
-    orientation: Optional[Orientation] = Field(default=Orientation.positive)
-    """Orientation of the metric, either 'positive' or 'negative'."""
+    orientation: Literal["positive", "negative"] = Field(
+        description="Orientation of the metric, either 'positive' or 'negative'.",
+        examples=0,
+        default="positive",
+    )
 
-    weight: Optional[float] = Field(default=0.0, ge=0.0, le=1.0)
-    """Weight of the metric in the summary score, must be between 0.0 and 1.0."""
+    weight: float = Field(
+        description="Weight of the metric in the summary score, must be between 0.0 and 1.0.",
+        examples=0.25,
+        default=0.0,
+        ge=0.0,
+        le=1.0,
+    )
 
-    absolute: Optional[bool] = Field(default=False)
-    """Whether to use the absolute value of the metric for normalization, default is False."""
+    absolute: bool = Field(
+        description="Whether to use the absolute value of the metric for normalization.",
+        examples=False,
+        default=False,
+    )
 
 
 class MetricEvalPeriod(BaseModel):
     """Configuration for the evaluation period of metrics to be used for screening donors."""
 
-    col_name: str
-    """Name of the column in the donor stats file that contains the evaluation period."""
+    col_name: str = Field(
+        description="Name of the column in the donor stats file that contains the evaluation period.",
+        examples="evalPeriod",
+    )
 
-    value: str
-    """Value of the evaluation period to filter the donor stats file."""
+    value: str = Field(
+        description="Value of the evaluation period to filter the donor stats file.",
+        examples="valid",
+    )
 
 
 class FormulationSummaryScoreConfig(BaseModel):
     """Configuration for computing a summary score for formulation as a weighted average of normalized metrics."""
 
-    metric_eval_period: Optional[MetricEvalPeriod] = None
-    """Optional: evaluation period of metrics to be used for screening donors."""
+    metric_eval_period: MetricEvalPeriod | None = Field(
+        description="Evaluation period of metrics to be used for screening donors.",
+        examples={"col_name": "evalPeriod", "value": "valid"},
+        default=None,
+    )
 
-    metrics: Dict[str, MetricConfig] = Field()
-    """Dictionary of metrics used in the summary score, keyed by metric name."""
+    metrics: Dict[str, MetricConfig] = Field(
+        description="Dictionary of metrics used in the summary score, keyed by metric name.",
+        examples={
+            "cor": {
+                "upper": 1,
+                "lower": -0.5,
+                "orientation": "positive",
+                "weight": 0.25,
+            }
+        },
+    )
 
     @model_validator(mode="after")
     def remove_zero_weighted_metrics(self) -> "FormulationSummaryScoreConfig":
@@ -208,20 +254,38 @@ class FormulationSummaryScoreConfig(BaseModel):
 class FormulationCostConfig(BaseModel):
     """Computational cost of each formulation."""
 
-    file: Optional[str] = None
-    """Path to CSV file with formulation costs. If provided, costs will be read from this file."""
-    costs: Optional[Dict[str, float]] = None
-    """Dictionary of formulation costs, keyed by formulation name. If `file` is provided, this is ignored."""
+    file: str | None = Field(
+        description="Path to CSV file with formulation costs. If provided, costs will be read from this file.",
+        examples="formulation_costs_secs_per_catchment.csv",
+        default=None,
+    )
+
+    costs: Dict[str, float] | None = Field(
+        description="Dictionary of formulation costs, keyed by formulation name. If `file` is provided, this is ignored.",
+        examples={"noah-owp-modular ueb cfe-x t-route": 10},
+        default=None,
+    )
 
 
 class Config(BaseConfig):
     """Top-level configuration for formulation regionalization."""
 
-    general: FormulationGeneralSettings
-    """General settings for the formulation regionalization application."""
-    spatial_unit: FormulationSpatialUnitConfig
-    """Spatial discretization settings for the application."""
-    summary_score: FormulationSummaryScoreConfig
-    """Summary score computation configuration for the application."""
-    formulation_cost: FormulationCostConfig
-    """Computational cost configuration for each formulation."""
+    general: FormulationGeneralSettings = Field(
+        description="General settings for the formulation regionalization application.",
+        default_factory=FormulationGeneralSettings,
+    )
+
+    spatial_unit: FormulationSpatialUnitConfig = Field(
+        description="Spatial discretization settings for the application.",
+        default_factory=FormulationSpatialUnitConfig,
+    )
+
+    summary_score: FormulationSummaryScoreConfig = Field(
+        description="Summary score computation configuration for the application.",
+        default_factory=FormulationSummaryScoreConfig,
+    )
+
+    formulation_cost: FormulationCostConfig = Field(
+        description="Computational cost configuration for each formulation.",
+        default_factory=FormulationCostConfig,
+    )
