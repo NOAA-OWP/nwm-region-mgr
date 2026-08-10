@@ -208,14 +208,15 @@ def plot_histogram(data: pd.DataFrame, d1: dict) -> None:
     """
     columns = d1.get("columns", [])
     if not columns:
-        raise ValueError("No columns specified to plot for histogram.")
+        logger.warning("No valid columns specified to plot for histogram.")
+        return
 
     # filter to numeric columns only
     numeric_columns = data.select_dtypes(include=[np.number]).columns.tolist()
     if not numeric_columns:
-        raise ValueError(
-            "No numeric columns found in the dataframe to plot histograms."
-        )
+        logger.warning("No numeric columns found in the dataframe to plot histograms.")
+        return
+
     if not set(columns).issubset(set(numeric_columns)):
         logger.warning(
             f"Some specified columns {set(columns) - set(numeric_columns)} are not numeric. "

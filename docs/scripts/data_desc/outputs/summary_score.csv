@@ -1,0 +1,5 @@
+sample_file_path|outputs/region/summary_score/score_conus_vpu03S.parquet
+title|Summary scores for each calibrated formulation and basin.
+gage_id|Unique identifier for each calibration basin.
+formulation|Formulation calibrated for each calibration basin.
+summary_score|Summary score for the calibrated formulation and basin.

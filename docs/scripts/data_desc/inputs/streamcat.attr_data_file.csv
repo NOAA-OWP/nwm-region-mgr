@@ -1,0 +1,42 @@
+sample_file_path|inputs/region/attr_datasets/streamcat/attr_streamcat_conus.parquet
+title|File containing StreamCat attribute data for all catchments in a NWM domain (e.g., CONUS).
+divide_id|Unique identifier for each catchment.
+BFI|"Baseflow is the component of streamflow that can be attributed to ground-water discharge into streams. The Baseflow Index (BFI) is the ratio of baseflow to total flow, expressed as a percentage, within catchment."
+CanalDens|"Density of NHDPlus line features classified as canal, ditch, or pipeline within the catchment or watershed."
+DamDens|Density of georeferenced dams within catchment (dams/ square km) based on the National Inventory of Dams (https://catalog.data.gov/dataset/national-inventory-of-dams)
+DamNIDStor|Total possible volume of all reservoirs (NID_STORA in NID) per unit area of catchment (cubic meters/square km) based on the National Inventory of Dams (https://catalog.data.gov/dataset/national-inventory-of-dams)
+DamNrmStor|Normal (most common) volume of all reservoirs (NORM_STORA in NID) per unit area of catchment (cubic meters/square km) based on the National Inventory of Dams (https://catalog.data.gov/dataset/national-inventory-of-dams)
+Elev|Mean catchment elevation in meters.
+Perm|Mean permeability (cm/hour) of soils (STATSGO) within catchment.
+Om|Mean organic matter content (% by weight) of soils (STATSGO) within catchment.
+RckDep|Mean depth (cm) to bedrock of soils (STATSGO) within catchment.
+WtDep|Mean seasonal water table depth (cm) of soils (STATSGO) within catchment.
+AgKffact|Mean soil erodibility (Kf) factor (unitless) of soils within catchment on agricultural land. The Kf factor is used in the Universal Soil Loss Equation (USLE) and represents a relative index of susceptibility of bare, cultivated soil to particle detachment and transport by rainfall.
+Kffact|Mean soil erodibility (Kf) factor (unitless) of soils within catchment. The Kf factor is used in the Universal Soil Loss Equation (USLE) and represents a relative index of susceptibility of bare, cultivated soil to particle detachment and transport by rainfall.
+PctAlkIntruVol|% of catchment area classified as lithology type: alkaline intrusive volcanic rock
+PctAlluvCoast|% of catchment area classified as lithology type: alluvium and fine-textured coastal zone sediment
+PctCarbResid|% of catchment area classified as lithology type: carbonate residual material
+PctCoastCrs|% of catchment area classified as lithology type: coastal zone sediment, coarse-textured
+PctColluvSed|% of catchment area classified as lithology type: colluvial sediment
+PctEolCrs|% of catchment area classified as lithology type: eolian sediment, coarse-textured (sand dunes)
+PctEolFine|% of catchment area classified as lithology type: eolian sediment, fine-textured (glacial loess)
+PctExtruVol|% of catchment area classified as lithology type: extrusive volcanic rock
+PctGlacLakeCrs|% of catchment area classified as lithology type: glacial outwash and glacial lake sediment, coarse-textured
+PctGlacLakeFine|% of catchment area classified as lithology type: glacial lake sediment, fine-textured
+PctGlacTilClay|% of catchment area classified as lithology type: glacial till, clayey
+PctGlacTilCrs|% of catchment area classified as lithology type: glacial till, coarse-textured
+PctGlacTilLoam|% of catchment area classified as lithology type: glacial till, loamy
+PctHydric|% of catchment area classified as lithology type: hydric, peat and muck
+PctNonCarbResid|% of catchment area classified as lithology type: non-carbonate residual material
+PctSalLake|% of catchment area classified as lithology type: saline like sediment
+PctSilicic|% of catchment area classified as lithology type: silicic residual material
+PctWater|% of catchment area classified as lithology type: water
+Precip|PRISM climate data - 30-year normal mean precipitation (mm): Annual period: 1981-2010 within catchment
+Tmax|PRISM climate data - 30-year normal maximum temperature (Â°C): Annual period: 1981-2010 within catchment
+Tmean|PRISM climate data - 30-year normal mean temperature (Â°C): Annual period: 1981-2010 within the catchment
+Tmin|PRISM climate data - 30-year normal minimum temperature (Â°C): Annual period: 1981-2010 within catchment
+RdDens|Density of roads (2010 Census Tiger Lines) within catchment (km/square km)
+Runoff|Mean runoff (mm) within catchment
+Clay|Mean % clay content of soils (STATSGO) within catchment.
+Sand|Mean % sand content of soils (STATSGO) within catchment.
+Precip_Minus_EVT|"This dataset represents surplus precipitation (mm): precipitation minus potential evaporation described in DOI: 10.1016/j.scitotenv.2020.137661 within individual,  local NHDPlusV2 catchments and upstream, contributing watersheds."

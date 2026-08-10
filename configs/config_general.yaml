@@ -1,0 +1,34 @@
+# User configuration for formulation regionalization
+ 
+# General settings for the formulation regionalization application
+general:
+  run_name: test  # Name of the run, used to create output folders and files
+  domain: conus  # Define NWM domain. Supported options: conus, ak, hi, prvi
+  vpu_list: ['03S'] # List of VPUs to process. 
+
+  #base_dir: data # Path to the base directory (when running from local)
+  base_dir: /ngen-app/nwm-region-mgr/data  # Path to the base directory
+  ngen_hydrofabric_file: '{base_dir}/inputs/region/hydrofabric/gpkg_vpu/vpu_{vpu_list}.gpkg'  
+  gage_divide_cwt_file: '{base_dir}/inputs/region/cwt_divide_gage/calib_gage_divide_{domain}.parquet'
+  donor_gage_file: '{base_dir}/inputs/region/gages_nwm4_calib_all.csv'
+  calval_stats_file: '{base_dir}/inputs/region/calval_stats/stat_calval_all_{domain}.parquet' #Path to folder where statistics from calibration and validation are stored
+  calib_param_file: '{base_dir}/inputs/region/pseudo_calib_params/sampled_params_{domain}.csv' # Path to file containing calibration parameters for all gages in the domain
+  #manual_pairings_file: '{base_dir}/inputs/region/manual_pairings/manual_pairings_{domain}_w_gage.csv'  # Path to manual pairings file
+  approach_calib_basins: summary_score  # Strategy for assigning formulations and parameters to calibrated basins: regionalization or summary_score
+  
+  id_col: # case-insensitive column names for different spatial units across all applicable files
+    divide: divide_id  # Name of column for catchment ID in all files
+    gage: gage_id  # Name of column for calibration basin ID in all files
+    huc12: huc_12  # Name of column for HUC12 ID in all files ("huc_12"for non-AK domains, "huc12" for AK)
+    vpu: vpuid  # Name of column for VPU ID in all files
+    donor: donor  # Name of column for donor basin ID in all files
+    drainage_area: areasqkm  # Name of column for catchment drainage area in all files
+
+  layer_name: # Define the layer to be used in the corresponding hydrofabric file
+    ngen: divides
+    huc12: WBDSnapshot_National # for non-AK VPUs (for AK: use "WBDHU12")
+
+  logging: # define logging configurations
+    level: info  # logging level, options: debug, info, warning, error, critical
+    log_to_file: True  # whether to log to a file
+    file: '{base_dir}/outputs/region/{run_name}.log'

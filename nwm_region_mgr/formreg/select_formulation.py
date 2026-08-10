@@ -243,9 +243,9 @@ def _find_calibration_gages(
 
     """
     # get configuration settings
-    gage_id_col = config.general.id_col[
-        "gage"
-    ]  # column name for gage ID in the DataFrame
+    gage_id_col = getattr(
+        config.general.id_col, "gage", "gage_id"
+    )  # column name for gage ID in the DataFrame
     nmin_gages = (
         config.spatial_unit.nmin_calib_basin
     )  #  minimum number of calibration gages required
@@ -379,7 +379,7 @@ def _select_formulation_given_score(
         method : str, optional
             Method to compute total score, either 'basin' or 'divide', by default 'basin'.
         type : str, optional
-            Type of total score to compute, either 'total_score' or 'total_count', by default 'total_score'.
+            Type of total score to compute, either 'total_score' or 'average_score', by default 'total_score'.
         id_col : dict[str, str], optional
             Dictionary mapping spatial unit type to its identifier column name,
             by default {"gage": "gage_id", "divide": "divide_id"}.
@@ -389,6 +389,7 @@ def _select_formulation_given_score(
             DataFrame with total scores computed for each spatial unit.
 
     """
+    # determine the column name for the type of subdivision to compute total/average score
     col1 = (
         id_col.get("gage", "gage_id")
         if type == "basin" and "gage_id" in df.columns
@@ -405,22 +406,26 @@ def _select_formulation_given_score(
 
     # identify best formulation(s)
     if method == "total_score":
+        # Sum of summary_score per formulation
         df1.loc[:, method] = (
             df1.groupby(["formulation"])["summary_score"].transform("sum").round(2)
         )
-    elif method == "total_count":
+
+    elif method == "average_score":
+        # Average summary_score per formulation
         df1.loc[:, method] = df1.groupby(["formulation"])["summary_score"].transform(
-            "count"
+            "mean"
         )
+
     else:
-        msg = f"Unknown method: {method}. Supported methods are 'total_score' and 'total_count'."
+        msg = f"Unknown method: {method}. Supported methods are 'total_score' and 'average_score'."
         logger.error(msg)
         raise ValueError(msg)
 
-    # keep only the best formulation(s) with the highest total score
+    # keep only the best formulation(s) with the highest total or average score
     df1 = df1[df1[method] == df1[method].max()]
 
-    # if there are multiple formulations with the same total score, choose the one that has the lowest cost
+    # if there are multiple formulations with the same score, choose the one that has the lowest cost
     if df1.shape[0] > 1:
         df1 = df1[df1["cost"] == df1["cost"].min()]
 
@@ -456,11 +461,14 @@ def _identify_best_formulation_per_gage(
             DataFrame with the best formulation for each gage and its score.
 
     """
+    # for each gage, find the best formulation(s) within the tolerance
     max_scores = df_score.groupby(gage_id_col)["summary_score"].transform("max")
     best_per_gage = df_score[
         df_score["summary_score"] >= (max_scores - max_scores * tolerance)
     ].copy()
 
+    # if formulation costs are provided, select the formulation with the minimum cost; otherwise,
+    # choose the formulation with the highest score (this essentially ignores the tolerance)
     if cost_dict is not None:
         # check if all formulations are in the cost_dict
         if not best_per_gage["formulation"].isin(cost_dict.keys()).all():
@@ -515,9 +523,10 @@ def select_formulation_donors_only(
 
     """
     # get the ID columns from the configuration
-    id_cols = config.general.id_col
-    gage_id_col = id_cols["gage"]
-    divide_id_col = id_cols["divide"]
+    gage_id_col = getattr(
+        config.general.id_col, "gage", "gage_id"
+    )  # column name for gage ID in the DataFrame
+    divide_id_col = getattr(config.general.id_col, "divide", "divide_id")
 
     # score computing method, type, and tolerance
     score_tolerance = config.spatial_unit.best_formulation.tolerance
@@ -538,8 +547,10 @@ def select_formulation_donors_only(
     cwt_divide_gage = read_table(config.general.gage_divide_cwt_file, dtype=col_dtype)
 
     # merge the crosswalk with the best formulations DataFrame
+    if divide_id_col in df_best_per_gage.columns:
+        df_best_per_gage = df_best_per_gage.drop(columns=[divide_id_col])
     df_selected = df_best_per_gage.merge(
-        cwt_divide_gage[[gage_id_col]].drop_duplicates(),
+        cwt_divide_gage[[gage_id_col, divide_id_col]].drop_duplicates(),
         on=gage_id_col,
         how="left",
     )
@@ -575,9 +586,10 @@ def select_formulation_all(
     """
     # get the ID columns from the configuration
     id_cols = config.general.id_col
-    gage_id_col = id_cols["gage"]
-    divide_id_col = id_cols["divide"]
-    huc12_id_col = id_cols["huc12"]
+    gage_id_col = getattr(id_cols, "gage", "gage_id")
+    divide_id_col = getattr(id_cols, "divide", "divide_id")
+    huc12_id_col = getattr(id_cols, "huc12", "huc_12")
+    huc12_layer = getattr(config.general.layer_name, "huc12", "WBDSnapshot_National")
 
     # score computing method, type, and tolerance
     score_method = config.spatial_unit.best_formulation.method.lower()
@@ -644,13 +656,23 @@ def select_formulation_all(
     # Open with Fiona to read features in huc_ids
     features = []
     huc_digit = len(huc_ids[0])  # assuming all huc_ids have the same length
-    with fiona.open(huc12_hydro_file, "r", open_options=["METHOD=ONLY_CCW"]) as src:
+    with fiona.open(
+        huc12_hydro_file, "r", layer=huc12_layer, open_options=["METHOD=ONLY_CCW"]
+    ) as src:
         for feat in src:
             huc_key = next(
                 (k for k in feat["properties"] if k.lower() == huc12_id_col), None
             )
             if huc_key and feat["properties"][huc_key][:huc_digit] in huc_ids:
                 features.append(feat)
+
+        if not features:
+            msg = (
+                f"No matching HUC12 geometries found in {huc12_hydro_file} "
+                f"for the specified HUC IDs at {huc_level} level."
+            )
+            logger.error(msg)
+            raise ValueError(msg)
 
         # Convert to GeoDataFrame
         huc12_gdf = gpd.GeoDataFrame.from_features(features, crs=src.crs)
@@ -693,7 +715,7 @@ def select_formulation_all(
             & df_score["formulation"].isin(formulations)
         ].copy()
 
-        # identify best formulation for each gage based on summary scores for formulation costs
+        # identify best formulation for each gage based on summary scores and/or formulation costs
         df_huc = _identify_best_formulation_per_gage(
             df_huc,
             gage_id_col=gage_id_col,
@@ -701,7 +723,7 @@ def select_formulation_all(
             cost_dict=cost_dict,
         )
 
-        # select the best formulation for each huc_id based on the total score or count
+        # select the best formulation for each huc_id based on the total score or average score
         best_formulation = _select_formulation_given_score(
             df_huc, method=score_method, type=score_type
         )
@@ -777,8 +799,8 @@ def check_gage_formulation_uniqueness(
 
     """
     # get formulation selected for each donor gage
-    gage_id_col = config.general.id_col["gage"]
-    divide_id_col = config.general.id_col["divide"]
+    gage_id_col = getattr(config.general.id_col, "gage", "gage_id")
+    divide_id_col = getattr(config.general.id_col, "divide", "divide_id")
     df_cwt = read_table(
         config.general.gage_divide_cwt_file,
         dtype={gage_id_col: "str", divide_id_col: "str"},
@@ -851,13 +873,14 @@ def save_formulation_results(
             Vector Processing Unit (VPU) for which to save formulations.
 
     """
-    co = config.output["formulation"]
-    co.save_to_file(
-        df_form, vpu=vpu, data_str="Formulation Selection", use_stem_suffix=False
-    )
+    co = getattr(config.output, "formulation", None)
+    if co is not None:
+        co.save_to_file(
+            df_form, vpu=vpu, data_str="Formulation Selection", use_stem_suffix=False
+        )
 
     # merge with calibration parameter file to get parameters for each gage
-    gage_id_col = config.general.id_col["gage"]
+    gage_id_col = getattr(config.general.id_col, "gage", "gage_id")
     df_pars = read_table(config.general.calib_param_file, dtype={gage_id_col: "str"})
     df_pars = df_form_gage.merge(
         df_pars, on=[gage_id_col, "formulation"], how="inner"
@@ -892,8 +915,11 @@ def plot_formulation_results(
 
     """
     # generate plots if enabled
-    cc = config.output["formulation"]
-    divide_id_col = config.general.id_col["divide"]
+    cc = getattr(config.output, "formulation", None)
+    if cc is None:
+        return
+
+    divide_id_col = getattr(config.general.id_col, "divide", "divide_id")
     score_method = config.spatial_unit.best_formulation.method.lower()
     if any(cc.plots.values()):
         # get geometry for divides if spatial map is enabled
@@ -902,7 +928,7 @@ def plot_formulation_results(
             df_selected = df_selected.merge(
                 gdf_vpu[[divide_id_col, "geometry"]].drop_duplicates(),
                 on=divide_id_col,
-                how="left",
+                how="right",
             )
 
             # convert df_selected to a real GeoDataFrame for plotting
@@ -965,7 +991,7 @@ def select_formulation(
     df_formulation["vpu"] = vpu
 
     # rearrange the columns in the formulation DataFrame
-    divide_id_col = config.general.id_col["divide"]
+    divide_id_col = getattr(config.general.id_col, "divide", "divide_id")
     score_method = config.spatial_unit.best_formulation.method.lower()
     columns = [
         "vpu",

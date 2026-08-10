@@ -1,0 +1,4 @@
+sample_file_path|inputs/region/formulation_costs_secs_per_catchment.csv
+title|File containing computational costs (in seconds) for all formulations being evaluated.
+formulation|Name of the NextGen formulation being evaluated.
+cost|Computational cost in seconds per catchment for the given formulation

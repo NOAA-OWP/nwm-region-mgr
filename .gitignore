@@ -25,6 +25,10 @@ __pycache__/
 # Editor configs
 .vscode/
 
+# Documentation
+docs/build/*
+docs/source/API/*
+!docs/source/API/index.rst
 # Specific project paths
 pkgs/parreg/build
 pkgs/parreg/tests/test_data/test_outputs

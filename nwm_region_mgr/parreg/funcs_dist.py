@@ -1,4 +1,4 @@
-"""Function to create donor-receiver paring using distance methods.
+"""Function to create donor-receiver pairs using distance methods.
 
 This function performs donor-receiver pairing using either Gower's distance (method = "gower") or
   the distance computed by unsupervised random forest classification (method = "urf")
@@ -374,8 +374,8 @@ class URFPairer(DistancePairer):
         donors_for_round: list,
         receivers_for_round: list,
     ) -> pd.DataFrame:
-        """Process data."""
-        # apply principal component analysis
+        """Process data for a single regionalization round."""
+        # PCA or pass-through
         if not self.config["pca"]:
             df_attr_reduced = df_attr_for_round.drop(
                 self.config["non_attr_cols"], axis=1
@@ -385,20 +385,36 @@ class URFPairer(DistancePairer):
                 df_attr_for_round.drop(self.config["non_attr_cols"], axis=1)
             )
 
-        time1 = time.time()
-        # compute attribute distance using unsupervised random forecast classification
-        rf1 = URF(n_trees=self.config["n_trees"], max_depth=self.config["max_depth"])
-        dist_attr_for_round = pd.DataFrame(
-            rf1.get_distance(df_attr_reduced.to_numpy(), njob=self.config["njobs"])
-        )
-        dist_attr_for_round = dist_attr_for_round.iloc[
-            len(donors_for_round) :, : len(donors_for_round)
-        ]
+        # Compute row positions for donors & receivers
+        num_donors = len(donors_for_round)
+        num_total = len(df_attr_for_round)
+        donor_idx = np.arange(num_donors)
+        receiver_idx = np.arange(num_donors, num_total)
 
-        logger.info(
-            f"Time consumed for distance calculation using URF is : --- {time.time() - time1} seconds ---"
+        # Distance calculation (optimized)
+        logger.info("Computing URF attribute distance...")
+        t0 = time.time()
+
+        rf1 = URF(n_trees=self.config["n_trees"], max_depth=self.config["max_depth"])
+
+        x = df_attr_reduced.to_numpy()  # convert dataframe to numpy for efficiency
+        dist_block = rf1.get_distance(
+            x,
+            njob=self.config["njobs"],
+            donor_idx=donor_idx,
+            receiver_idx=receiver_idx,
         )
-        return dist_attr_for_round
+
+        # Wrap result in DataFrame
+        out = pd.DataFrame(
+            dist_block,
+            index=receivers_for_round,
+            columns=donors_for_round,
+        )
+
+        logger.info(f"URF distance block computed in {time.time() - t0:.2f} seconds")
+
+        return out
 
 
 class ProximityPairer(Pairer):

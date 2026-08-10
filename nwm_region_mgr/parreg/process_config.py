@@ -75,55 +75,13 @@ class ParameterRegionalizationProcessor(BaseConfigProcessor):
         if "formulation_dict" in self.__dict__:
             del self.__dict__["formulation_dict"]
 
-    def get_formulation_file_name(self, vpu: str, config: Any) -> str:
-        """Get the formulation file name for a given VPU."""
-        co = config.output.get("formulation", None)
-        if co is None:
-            logger.warning(
-                "No 'formulation' section found in formulation output config."
-            )
-            return ""
-
-        return co.get_file_path(vpu=vpu)
-
-    def expand_form_config_for_donor_vpu(self, vpu: str, config: Any) -> Any:
-        """Expand the formulation config for donor VPUs.
-
-        This function modifies formulation config to encompass all donor VPUs as needed.
-        """
-        config1 = config.copy()
-
-        def add_entry_if_missing(d: dict, vpu_key: str) -> dict:
-            if vpu_key not in d:
-                first_key = next(iter(d))
-                d[vpu_key] = d[first_key].replace(first_key, vpu_key)
-            return d
-
-        config1.general.ngen_hydrofabric_file = add_entry_if_missing(
-            config.general.ngen_hydrofabric_file, vpu
-        )
-        config1.output.get("summary_score").stem = add_entry_if_missing(
-            config.output.get("summary_score").stem, vpu
-        )
-        config1.output.get("formulation").stem = add_entry_if_missing(
-            config.output.get("formulation").stem, vpu
-        )
-
-        # save the expanded configuration
-        if config1 != config:
-            config1.output["config_final"].save_to_file(
-                config1, data_str="Expanded final configuration"
-            )
-
-        return config1
-
     def run_parreg_for_vpu(self, vpu: str, frp: FRP) -> None:
         """Run the parameter regionalization process for a given VPU."""
         # set the VPU for processing
         self.set_vpu(vpu)
 
         # if pair files already exist for all pairing algorithms, skip the process
-        co = self.config.output.get("pairs", None)
+        co = getattr(self.config.output, "pairs", None)
         if co is None:
             logger.warning("No 'pairs' section found in output config.")
             return
@@ -154,8 +112,12 @@ class ParameterRegionalizationProcessor(BaseConfigProcessor):
 
         # run formulation regionalization for all donor VPUs
         for vpu1 in self.donor_vpus:
-            frp.config = self.expand_form_config_for_donor_vpu(vpu1, frp.config)
-            formulation_file = self.get_formulation_file_name(vpu1, frp.config)
+            frp.expand_config_for_vpu(vpu1)
+            formulation_file = frp.get_output_file_path(
+                "formulation",
+                vpu1,
+                use_stem_suffix=True,
+            )
             frp.run_formreg_for_vpu(vpu1, formulation_file)
 
         # process attribute data
@@ -168,12 +130,7 @@ class ParameterRegionalizationProcessor(BaseConfigProcessor):
 
         # generate pairings
         with self.timing_block("generate_pairing"):
-            self.generate_pairing(df_attr_all, self.dist_spatial, frp.config)
-
-        # create formulation parameter file
-        # self.create_formulation_parameter_file(
-        #     frp.config.output.get("formulation", None)
-        # )
+            self.generate_pairing(df_attr_all, self.dist_spatial, frp)
 
         logger.info(f"Parameter regionalization for VPU {vpu} completed.")
 
@@ -497,7 +454,7 @@ class ParameterRegionalizationProcessor(BaseConfigProcessor):
 
             file1 = self.build_hydrofabric_path(vpu1)
             gdf = gpd.read_file(
-                file1, layer=self.config.general.layer_name.get("ngen", "divides")
+                file1, layer=getattr(self.config.general.layer_name, "ngen", "divides")
             )
             gdf1 = gdf[gdf[self.divide_id_name].isin(donors0)]
             donors = gdf1[self.divide_id_name].tolist()
@@ -582,17 +539,21 @@ class ParameterRegionalizationProcessor(BaseConfigProcessor):
     @property
     def dist_file(self) -> Path:
         """Build dist file path."""
-        out = self.config.output.get("spatial_distance", None)
+        out = getattr(self.config.output, "spatial_distance", None)
         return Path(
             out.path,
             f"donor_receiver_dist_{self.config.general.domain}_vpu{self.vpu}.{out.format}",
         )
 
-    def set_formulation_dict(self, form_config: Any):
+    def set_formulation_dict(self, frp: FRP):
         """Get the formulation lookup table."""
         df_form_all = pd.DataFrame()
         for vpu in self.donor_vpus:
-            formulation_file = self.get_formulation_file_name(vpu, form_config)
+            formulation_file = frp.get_output_file_path(
+                "formulation",
+                vpu,
+                use_stem_suffix=False,
+            )
 
             if not formulation_file:
                 msg = f"No formulation file found for VPU {vpu}. Exiting ..."
@@ -689,7 +650,7 @@ class ParameterRegionalizationProcessor(BaseConfigProcessor):
 
     def write_spatial_file(self, df_spatial_dist: pd.DataFrame, file_changed: bool):
         """Save the spatial distance data."""
-        sd = self.config.output.get("spatial_distance", None)
+        sd = getattr(self.config.output, "spatial_distance", None)
         if sd and sd.save and file_changed:
             if not self.dist_file.parent.is_dir():
                 self.dist_file.parent.mkdir(parents=True, exist_ok=True)
@@ -880,17 +841,24 @@ class ParameterRegionalizationProcessor(BaseConfigProcessor):
 
     def save_attribute_data(self):
         """Save the attribute data."""
-        out = self.config.output["attr_data_final"]
-        out.save_to_file(
-            self.sorted_df_attrs_all,
-            vpu=self.vpu,
-            data_str=f"Final Attribute Data (VPU {self.vpu})",
-            use_stem_suffix=False,
-        )
+        out = getattr(self.config.output, "attr_data_final", None)
+        if out is not None:
+            out.save_to_file(
+                self.sorted_df_attrs_all,
+                vpu=self.vpu,
+                data_str=f"Final Attribute Data (VPU {self.vpu})",
+                use_stem_suffix=False,
+            )
 
     def plot_attribute_data(self):
         """Plot attribute data."""
-        out = self.config.output["attr_data_final"]
+        out = getattr(self.config.output, "attr_data_final", None)
+        if out is None:
+            logger.info(
+                "No output configuration found for attr_data_final. Skipping plot."
+            )
+            return
+
         columns_to_plot = out.plots.get("columns_to_plot", None)
         if out.plots.get("spatial_map", False) or out.plots.get("histogram", False):
             if columns_to_plot is None:
@@ -1013,9 +981,12 @@ class ParameterRegionalizationProcessor(BaseConfigProcessor):
             x for x in self.pairers.keys() if x in self.config.general.algorithm_list
         ]
 
-    def construct_output_filepath(self, pairer_name: str) -> Path:
-        """Construct output filepath."""
-        return self.config.output.pairs._get_file_path(self.vpu)
+    # def construct_output_filepath(self, pairer_name: str) -> Path:
+    #     """Construct output filepath."""
+    #     return getattr(self.config.output, "pairs", None).get_file_path(
+    #         vpu=self.vpu, algorithm=pairer_name
+    #     )
+    # return self.config.output.pairs._get_file_path(self.vpu)
 
     def update_algorithm_config(
         self, pairer_name: str, df_attrs_all: pd.DataFrame
@@ -1071,7 +1042,7 @@ class ParameterRegionalizationProcessor(BaseConfigProcessor):
 
         """
         # output config for pairs
-        co = self.config.output.get("pairs", None)
+        co = getattr(self.config.output, "pairs", None)
 
         # read the pairing results from file if df_pairs is not provided
         if df_pairs is None or df_pairs.empty:
@@ -1207,10 +1178,15 @@ class ParameterRegionalizationProcessor(BaseConfigProcessor):
         df_pairs = df_pairs.sort_values(by=[self.divide_id_name], ascending=True)
         return df_pairs
 
-    def save_pairing_results(self, df_pairs: pd.DataFrame, pairer_name: str) -> None:
+    def save_pairing_results(
+        self, df_pairs: pd.DataFrame, pairer_name: str
+    ) -> pd.DataFrame:
         """Save the pairing results to file."""
         # output config for pairs
-        co = self.config.output.get("pairs", None)
+        co = getattr(self.config.output, "pairs", None)
+        if co is None:
+            logger.warning("No output configuration found for pairs. Skipping save.")
+            return
 
         # save donor receiver pairing to csv file
         co.save_to_file(
@@ -1259,6 +1235,8 @@ class ParameterRegionalizationProcessor(BaseConfigProcessor):
         )
         co.format = format0
 
+        return df_pairs_gage
+
     def get_donors_receivers_by_form(self, form_key: str, form_values: list) -> tuple:
         """Get the donors and receivers for a given formulation.
 
@@ -1297,7 +1275,9 @@ class ParameterRegionalizationProcessor(BaseConfigProcessor):
 
         return donors_in_form, receivers_in_form
 
-    def create_formulation_parameter_file(self, form_config: Any, pairer: str) -> None:
+    def create_formulation_parameter_file(
+        self, form_config: Any, pairer: str
+    ) -> pd.DataFrame:
         """Create formulation parameter file.
 
         Create a formulation parameter file that lists the gage_id, formulation, and the calibrated parameters.
@@ -1327,7 +1307,14 @@ class ParameterRegionalizationProcessor(BaseConfigProcessor):
                 df_param_all = pd.concat([df_param_all, df_param], ignore_index=True)
 
         # read gage-receiver pairing results for the current algorithm and VPU
-        pair_file = self.config.output.get("pairs", None).get_file_path(
+        co = getattr(self.config.output, "pairs", None)
+        if co is None:
+            logger.warning(
+                "No output configuration found for pairs. Skipping creating formulation parameter file."
+            )
+            return
+
+        pair_file = co.get_file_path(
             vpu=self.vpu, algorithm=pairer, use_stem_suffix=True
         )
 
@@ -1355,7 +1342,12 @@ class ParameterRegionalizationProcessor(BaseConfigProcessor):
             raise ValueError(msg)
         else:
             # save the formulation parameter file
-            out = self.config.output["params"]
+            out = getattr(self.config.output, "params", None)
+            if out is None:
+                logger.warning(
+                    "No output configuration found for params. Skipping save."
+                )
+                return
             out.save_to_file(
                 df_param_all,
                 vpu=self.vpu,
@@ -1364,8 +1356,58 @@ class ParameterRegionalizationProcessor(BaseConfigProcessor):
                 use_stem_suffix=False,
             )
 
+        return df_param_all
+
+    def plot_parameter_outputs(
+        self, pairer_name: str, df_pairs_gage: pd.DataFrame, df_param_all: pd.DataFrame
+    ) -> None:
+        """Plot the formulation parameter outputs.
+
+        Args:
+            pairer_name: name of the pairing algorithm used
+            df_pairs_gage: DataFrame containing the gage-receiver pairs
+            df_param_all: DataFrame containing the formulation parameters
+
+        """
+        # output config for params
+        co = getattr(self.config.output, "params", None)
+        if co is None or not co.plots or co.plots.get("columns_to_plot", None) is None:
+            return
+
+        if df_param_all is None or df_param_all.empty:
+            msg = "No formulation parameter data found. Skipping params plot"
+            logger.error(msg)
+
+        if df_pairs_gage is None or df_pairs_gage.empty:
+            msg = "No gage-receiver pairing data found. Skipping params plot"
+            logger.error(msg)
+
+        # merge df_param_all with df_pairs_gage to get the formulation parameters for all receivers in the current VPU
+        df_params = df_pairs_gage.merge(
+            df_param_all,
+            on=self.gage_id_name,
+            how="left",
+        )
+
+        columns_to_plot = co.plots.get("columns_to_plot", [])
+        plot_dict = {
+            "vpu": self.vpu,
+            "var_str": "Regionalized Parameters",
+            "columns": columns_to_plot,
+            "ncols": min(3, len(columns_to_plot)),
+        }
+
+        # convert df_pairs to GeoDataFrame to plot spatial map
+        if co.plots and co.plots.get("spatial_map", False):
+            # merge df_pairs with the VPU geodataframe to get the geometry
+            gdf = self.get_vpu_gdf()
+            df_params = df_params.merge(gdf, on=self.divide_id_name, how="right")
+            df_params = gpd.GeoDataFrame(df_params, geometry="geometry", crs=gdf.crs)
+
+        co.plot_data(df_params, plot_dict)
+
     def generate_pairing(
-        self, df_attr_all: pd.DataFrame, dist_spatial: pd.DataFrame, form_config: Any
+        self, df_attr_all: pd.DataFrame, dist_spatial: pd.DataFrame, frp: FRP
     ):
         """Conduct donor-receiver pairing for a given VPU based on the configuration.
 
@@ -1375,7 +1417,7 @@ class ParameterRegionalizationProcessor(BaseConfigProcessor):
         Args:
             df_attr_all: dataframe containing the full attribute data for all receivers and donors
             dist_spatial: dataframe containing the pair-wise spatial distance between donors and receivers
-            form_config: configuration object containing the settings for formulation regionalization
+            frp: FRP object containing the settings for formulation regionalization
 
         Returns:
             None, but saves the pairing results to a file.
@@ -1384,7 +1426,12 @@ class ParameterRegionalizationProcessor(BaseConfigProcessor):
         logger.info(f"Algorithms to run: {self.pairer_names}")
 
         # output config for pairs
-        co = self.config.output.get("pairs", None)
+        co = getattr(self.config.output, "pairs", None)
+        if co is None:
+            logger.warning(
+                "No output configuration found for pairs. Skipping pairing generation."
+            )
+            return
 
         # loop through regionalization algorithms to generate donor-receiver pairings for each algorithm/scenario combination
         for pairer_name in self.pairer_names:
@@ -1406,7 +1453,7 @@ class ParameterRegionalizationProcessor(BaseConfigProcessor):
 
                 # loop through formulations to conduct pairing separately for each formulation
                 df_pairs_all = pd.DataFrame()
-                self.set_formulation_dict(form_config)
+                self.set_formulation_dict(frp)
                 for form_key, form_values in self.formulation_dict.items():
                     # identify donors and receivers for the current formulation
                     donors_in_form, receivers_in_form = (
@@ -1465,15 +1512,18 @@ class ParameterRegionalizationProcessor(BaseConfigProcessor):
                 df_pairs_all = self.add_donors_to_pair_results(df_pairs_all)
 
                 # save the pairing results to file
-                self.save_pairing_results(df_pairs_all, pairer_name)
+                df_pairs_gage = self.save_pairing_results(df_pairs_all, pairer_name)
 
                 # plot the pairing results
                 self.plot_pairing_outputs(pairer_name, df_pairs_all)
 
                 # create formulation parameter file
-                self.create_formulation_parameter_file(
-                    form_config.output.get("formulation", None), pairer_name
+                df_param_all = self.create_formulation_parameter_file(
+                    getattr(frp.config.output, "formulation", None), pairer_name
                 )
+
+                # plot parameter outputs
+                self.plot_parameter_outputs(pairer_name, df_pairs_gage, df_param_all)
 
                 end_time = time.time()
                 logger.info(f"Execution time: {end_time - start_time:.4f} seconds")

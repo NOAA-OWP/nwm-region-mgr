@@ -1,0 +1,34 @@
+name: documentation
+
+on:
+  push:
+    branches: [ "documentation" ]
+
+permissions:
+  contents: write
+
+jobs:
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: |
+          pip install -r docs/source/requirements.txt
+          pip install .
+      - name: Debug Python imports
+        run: |
+          python -c "import nwm_region_mgr.parreg.config_schema; print('Import OK')"
+      - name: Sphinx build
+        run: |
+          sphinx-build docs/source docs/build
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_branch: gh-pages
+          publish_dir: docs/build/
+          force_orphan: true

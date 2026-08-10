@@ -1,4 +1,4 @@
-"""Clustering functions.
+"""Functions to create donor-receiver pairs using clustering methods.
 
 This function performs donor-receiver pairing based on clustering using
   k-means clustering (method = "kmeans")
@@ -124,12 +124,25 @@ class ClusterPairer(Pairer):
 
         snowy is a bool
         """
+        df_attr_copy = df_attr.copy()
+        df_attr_reduced_copy = df_attr_reduced.copy()
+
         df_attr_reduced.index = df_attr.index
         df_attr_reduced = df_attr_reduced[df_attr["snowy"] == snowy]
         df_attr = df_attr[df_attr["snowy"] == snowy]
 
         donors = df_attr[df_attr["is_donor"]]["divide_id"].tolist()
         receivers = df_attr[~df_attr["is_donor"]]["divide_id"].tolist()
+
+        if len(donors) == 0 and len(receivers) > 0:
+            logger.warning(
+                f"No donors available for {len(receivers)} {'snowy' if snowy else 'non-snowy'} catchments in this round."
+                f"Select donors from all candidates for these receivers."
+            )
+            df_attr_reduced = df_attr_reduced_copy.copy()
+            df_attr = df_attr_copy.copy()
+            donors = df_attr[df_attr["is_donor"]]["divide_id"].tolist()
+            receivers = df_attr[~df_attr["is_donor"]]["divide_id"].tolist()
 
         # remove any receivers that are also donors in df_attr (due to issues with hydrofabric,
         # e.g., two different gages sharing the exact same divides)

@@ -12,7 +12,7 @@ The key output is a similarity/dissimilarity matrix, which will be used by the r
 
 import warnings
 
-import numpy
+import numpy as np
 from joblib import Parallel, delayed
 from numba import njit
 from sklearn.ensemble import RandomForestClassifier
@@ -68,13 +68,13 @@ class URF(object):
         except:
             # TODO handle a specific Exception here
             xs = x.copy()
-            x = numpy.hstack(xs)
+            x = np.hstack(xs)
             objnum = x.shape[0]
 
         csize = 10
-        start = numpy.arange(1 + int(objnum / csize)) * csize
+        start = np.arange(1 + int(objnum / csize)) * csize
         end = start + csize
-        fe = numpy.vstack([start, end]).T
+        fe = np.vstack([start, end]).T
         fe[-1][1] = objnum
 
         self.fe = fe
@@ -83,22 +83,31 @@ class URF(object):
 
         return
 
-    """
-    Get the dissimilarity matrix produced by the random forest model to be used in the regionalization algorithm
-    """
-
-    def get_distance(self, x, njob=1):
-        """Get distance."""
+    def get_distance(self, x, njob=1, donor_idx=None, receiver_idx=None):
+        """Get the dissimilarity matrix produced by the random forest model."""
         self.get_xs(x)
-        rf_leafs, is_good = self.get_leafs()
-        # distance_matrix = Parallel(n_jobs=-1)(delayed(build_distance_matrix_slow)
-        distance_matrix = Parallel(n_jobs=njob)(
-            delayed(build_distance_matrix_slow)(rf_leafs, is_good, se) for se in self.fe
-        )
-        distance_matrix = numpy.vstack(distance_matrix)
-        distance_matrix = distance_mat_fill(distance_matrix)
+        leafs, is_good = self.get_leafs()
 
-        return distance_matrix
+        if donor_idx is None:
+            donor_idx = np.arange(x.shape[0])
+        if receiver_idx is None:
+            receiver_idx = np.arange(x.shape[0])
+
+        # Parallel over receiver_idx blocks
+        blocks = Parallel(n_jobs=njob)(
+            delayed(build_distance_matrix_slow)(
+                leafs,
+                is_good,
+                np.array([ri], dtype=np.int32),  # single receiver per task
+                np.array(donor_idx, dtype=np.int32),
+            )
+            for ri in receiver_idx
+        )
+
+        # Stack into final (receivers × donors)
+        dist = np.vstack(blocks)
+
+        return dist
 
     def get_anomaly_score(self, x, mean_over=2500, knn=None, njob=1):
         """Get anomaly score."""
@@ -112,11 +121,11 @@ class URF(object):
             knn = int(knn)
 
         if mean_over < nof_objects:
-            distance_to_objects = numpy.random.choice(
+            distance_to_objects = np.random.choice(
                 nof_objects, mean_over, replace=False
             )
         else:
-            distance_to_objects = numpy.arange(nof_objects)
+            distance_to_objects = np.arange(nof_objects)
 
         anomaly_score = Parallel(n_jobs=njob)(
             delayed(get_anomaly_score_slow)(
@@ -125,7 +134,7 @@ class URF(object):
             for se in self.fe
         )
 
-        anomaly_score = numpy.concatenate(anomaly_score)
+        anomaly_score = np.concatenate(anomaly_score)
 
         return anomaly_score
 
@@ -140,7 +149,7 @@ def is_good_matrix_get(forest, x, njob=1):
     is_good_matrix = Parallel(n_jobs=njob, verbose=0)(
         delayed(is_good_vec)(tree, x) for tree in forest.estimators_
     )
-    is_good_matrix = numpy.vstack(is_good_matrix)
+    is_good_matrix = np.vstack(is_good_matrix)
     is_good_matrix = is_good_matrix.T
 
     return is_good_matrix
@@ -154,8 +163,8 @@ def get_anomaly_score_slow(knn, distance_to_objects, leafs, is_good, fe):
 
     # obs_num = leafs.shape[0]
     tree_num = leafs.shape[1]
-    anomaly_score = numpy.zeros(end - start)
-    dists = numpy.zeros(distance_to_objects.shape)
+    anomaly_score = np.zeros(end - start)
+    dists = np.zeros(distance_to_objects.shape)
 
     for i in range(start, end):
         for j_idx, j in enumerate(distance_to_objects):
@@ -173,49 +182,49 @@ def get_anomaly_score_slow(knn, distance_to_objects, leafs, is_good, fe):
 
             dists[j_idx] = dis
         if knn is None:
-            anomaly_score[i - start] = numpy.sum(dists)
+            anomaly_score[i - start] = np.sum(dists)
         else:
-            anomaly_score[i - start] = numpy.sort(dists)[knn]
+            anomaly_score[i - start] = np.sort(dists)[knn]
 
     return anomaly_score
 
 
 @njit
-def build_distance_matrix_slow(leafs, is_good, fe):
-    """Build distance matrix."""
-    start = fe[0]
-    end = fe[1]
+def build_distance_matrix_slow(leafs, is_good, receiver_idx, donor_idx):
+    """Compute the n_receiver x n_donor block of the distance matrix.
 
-    obs_num = leafs.shape[0]
+    To save memory for large VPU calculations, this function avoids computing the full
+    (n_receiver+n_donor) x (n_receiver+n_donor) distance matrix, and uses float32 for dtype.
+
+    leafs:      (N x T)   int32
+    is_good:    (N x T)   int8 (0/1)
+    receiver_idx: list/array of indices to compute rows for
+    donor_idx:    list/array of indices to compute columns for
+    """
+    n_rec = len(receiver_idx)
+    n_donor = len(donor_idx)
     tree_num = leafs.shape[1]
-    dis_mat = numpy.ones((end - start, obs_num))
 
-    for i in range(start, end):
-        jstart = i
-        for j in range(jstart, obs_num):
+    # use float32 (rather than float64 to save memory for large VPUs)
+    out = np.ones((n_rec, n_donor), dtype=np.float32)
+
+    for ri in range(n_rec):
+        i = receiver_idx[ri]
+        for dj in range(n_donor):
+            j = donor_idx[dj]
+
             same_leaf = 0
             good_trees = 0
+
             for k in range(tree_num):
-                if (is_good[i, k] == 1) and (is_good[j, k] == 1):
-                    good_trees = good_trees + 1
+                if is_good[i, k] == 1 and is_good[j, k] == 1:
+                    good_trees += 1
                     if leafs[i, k] == leafs[j, k]:
-                        same_leaf = same_leaf + 1
+                        same_leaf += 1
+
             if good_trees == 0:
-                dis = 1
+                out[ri, dj] = 1.0
             else:
-                dis = 1 - float(same_leaf) / good_trees
+                out[ri, dj] = 1.0 - same_leaf / good_trees
 
-            dis_mat[i - start][j] = dis
-
-    return dis_mat
-
-
-@njit
-def distance_mat_fill(dis_mat):
-    """Distance mat fill."""
-    for i in range(len(dis_mat)):
-        jend = i
-        for j in range(0, jend):
-            dis_mat[i][j] = dis_mat[j][i]
-
-    return dis_mat
+    return out

@@ -10,8 +10,11 @@ this script will attempt to run `nwm_routing` as a fallback to generate the rout
 See run_ngen_vpu.sh for an example of how to run this script.
 """
 
+from __future__ import annotations
+
 import argparse
 import logging
+import os
 import subprocess
 import sys
 from datetime import datetime
@@ -20,11 +23,12 @@ from pathlib import Path
 
 import yaml
 from mswm.build_inputs import RealizationBuilder
-
-from nwm_region_mgr.utils.config_utils import NGENConfig
-from nwm_region_mgr.utils.string_utils import recursive_substitute
+from pydantic import BaseModel, field_validator
 
 logger = logging.getLogger(__name__)
+
+TIMESTAMP_FMT = "%Y-%m-%dT%H:%M:%S"
+TIMESTAMP_FMT1 = "%Y-%m-%d %H:%M:%S"
 
 
 def setup_logging(log_file: str | Path, log_level: int = logging.INFO):
@@ -72,6 +76,7 @@ def log_run_info(args: dict):
     """Log the run information."""
     logger.info("====== Settings for NGEN Regionalization Run ======")
     logger.info(f"VPU:            {args['vpu']}")
+    logger.info(f"Algorithm:      {args['algorithm']}")
     logger.info(f"Run name:       {args['run_name']}")
     logger.info(f"Time range:     {args['start_time']} → {args['end_time']}")
     logger.info(f"Working dir:    {args['base_dir']}")
@@ -81,7 +86,7 @@ def log_run_info(args: dict):
     logger.info(f"MSWM template file:  {args['config_template']}")
     logger.info(f"NGEN input dir:    {args['out_dir'] / '../Input'}")
     logger.info(f"NGEN output dir:     {args['out_dir']}")
-    logger.info(f"Number of procs: {args.keys()}")
+    logger.info(f"Number of procs: {args['nprocs']}")
     logger.info("================================================")
 
 
@@ -91,21 +96,21 @@ def create_mswm_config(args: dict):
         template_content = f.read()
 
     # format start and end times (as required by MSWM)
-    start_time = datetime.strptime(args["start_time"], "%Y-%m-%dT%H:%M:%S")
-    end_time = datetime.strptime(args["end_time"], "%Y-%m-%dT%H:%M:%S")
-    args["start_time"] = start_time.strftime("%Y-%m-%d %H:%M:%S")
-    args["end_time"] = end_time.strftime("%Y-%m-%d %H:%M:%S")
+    start_time = datetime.strptime(args["start_time"], TIMESTAMP_FMT)
+    end_time = datetime.strptime(args["end_time"], TIMESTAMP_FMT)
+    args["start_time"] = start_time.strftime(TIMESTAMP_FMT1)
+    args["end_time"] = end_time.strftime(TIMESTAMP_FMT1)
 
     # Replace placeholders in the template
     config_content = template_content.format(
-        vpu=args["vpu"],
-        run_name=args["run_name"],
+        vpu="vpu_" + args["vpu"],
+        run_name=args["run_name"] + "_" + args["algorithm"],
         start_time=args["start_time"],
         end_time=args["end_time"],
         par_file=args["par_file"],
         pair_file=args["pair_file"],
         gpkg_file=args["gpkg_file"],
-        work_dir=args["base_dir"],
+        work_dir=str(args["base_dir"]) + "/outputs/ngen",
         nprocs=args["nprocs"],
     )
 
@@ -124,10 +129,10 @@ def verify_ngen_run_inputs(args: dict):
     ngen_exe = input_dir / "ngen"
     real_file = (
         Path(args["out_dir"]).parent
-        / f"{args['vpu']}_realization_config_bmi_region.json"
+        / f"vpu_{args['vpu']}_realization_config_bmi_region.json"
     )
     real_file = real_file.resolve()
-    partition_file = input_dir / f"{args['vpu']}_partition_config.json"
+    partition_file = input_dir / f"vpu_{args['vpu']}_partition_config.json"
     hydrofab_file = input_dir / Path(args["gpkg_file"]).name
     # command line argument validation
     if not ngen_exe.is_file():
@@ -213,7 +218,7 @@ def run_nwm_routing(args: dict):
     routing_config = (
         Path(args["out_dir"]).parent
         / "Input"
-        / f"{args['vpu']}_troute_config_region.yaml"
+        / f"vpu_{args['vpu']}_troute_config_region.yaml"
     )
     if not routing_config.is_file():
         routing_logger.error(f"Routing config file not found: {routing_config}")
@@ -221,7 +226,7 @@ def run_nwm_routing(args: dict):
 
     # Parse and format start time (expects args.start_time like '2022-10-01T00:00:00')
     try:
-        start_time = datetime.strptime(args["start_time"], "%Y-%m-%dT%H:%M:%S")
+        start_time = datetime.strptime(args["start_time"], TIMESTAMP_FMT)
         start_time_str = start_time.strftime("%Y%m%d%H%M")
     except Exception:  # prevents double logging
         # Fallback: use raw string if parsing fails
@@ -281,12 +286,9 @@ def run_nwm_routing(args: dict):
         routing_logger.info("nwm_routing completed successfully.")
 
 
-def run_ngen_with_unified_logging(args: dict):
-    """Run NGEN as a subprocess and log output.
-
-    If NGEN fails and t-route output file is not found, run nwm_routing as a fallback.
-
-    """
+def run_ngen_with_nwm_routing_fallback() -> None:
+    """Execute ngen and poll its log file. If it returns a non-zero exit code or if certain messages
+    are found in its log file, then run nwm_routing separately as a fallback to produce t-route outputs."""
     ngen_logger = logging.getLogger("ngen")
     ngen_logger.propagate = False
     ngen_logger.setLevel(args["log_level"])
@@ -312,6 +314,7 @@ def run_ngen_with_unified_logging(args: dict):
         bufsize=1,
     )
 
+    aborted = False
     try:
         for line in iter(process.stdout.readline, ""):
             line = line.rstrip()
@@ -344,7 +347,21 @@ def run_ngen_with_unified_logging(args: dict):
         run_nwm_routing(args)
         return  # Exit after fallback
 
-    ngen_logger.info("NGEN simulation finished successfully.")
+
+def run_ngen_with_unified_logging(args: dict):
+    """Run NGEN as a subprocess and log output.
+
+    If args["use_nwm_routing_fallback"] is True, and
+    If NGEN fails and t-route output file is not found, run nwm_routing as a fallback.
+    """
+
+    if args["use_nwm_routing_fallback"]:
+        run_ngen_with_nwm_routing_fallback()
+    else:
+        cmd = ["bash", "-c", build_ngen_command(args)]
+        logger.info(f"Running command: {cmd}")
+        subprocess.run(cmd, check=True)
+        logger.info(f"Command finished: {cmd}")
 
 
 def main_workflow(
@@ -364,18 +381,41 @@ def main_workflow(
     run_ngen_with_unified_logging(args)
 
 
-def get_args() -> argparse.Namespace:
-    """Parse command line arguments."""
-    # Create the parser
-    parser = argparse.ArgumentParser(
-        description="Standalone driver for running ngen simulation for a VPU with regionalized parameters."
-    )
-    parser.add_argument(
-        "--config_ngen", required=True, help="Path to NGEN configuration file"
-    )
-    args = parser.parse_args()
+def validate_timestamp(value: str) -> str:
+    """Validate that the given string is in the correct timestamp format."""
+    try:
+        datetime.strptime(value, TIMESTAMP_FMT)
+    except ValueError:
+        raise ValueError(
+            f"Invalid timestamp '{value}'. Expected format {TIMESTAMP_FMT}"
+        )
+    return value
 
-    return args
+
+class NGENConfig(BaseModel):
+    """Data model for NGEN configuration using pydantic."""
+
+    vpu: str
+    run_name: str
+    algorithm: str
+
+    start_time: str
+    end_time: str
+
+    nprocs: int
+    base_dir: str
+
+    par_file: str
+    pair_file: str
+    gpkg_file: str
+    config_template: str
+    log_file: str | Path = None
+    log_level: str = "INFO"
+    use_nwm_routing_fallback: bool = False
+
+    # validate timestamp fields
+    _validate_start = field_validator("start_time")(validate_timestamp)
+    _validate_end = field_validator("end_time")(validate_timestamp)
 
 
 class NGENConfigProcessor:
@@ -391,49 +431,44 @@ class NGENConfigProcessor:
         """Load and process the NGEN configuration file."""
         with open(self.config_file, "r") as f:
             data = yaml.safe_load(f)
-        config = NGENConfig(**data["general"])
+        config = NGENConfig(**data)
         return self.substitute_placeholders(config)
 
     def to_dict(self):
         """Convert the config to a dictionary."""
-        return self.config.__dict__
+        return self.config.model_dump()
 
-    def substitute_placeholders(self, config):
-        """Substitute placeholders in the config with actual values.
+    def substitute_placeholders(self, config: NGENConfig) -> NGENConfig:
+        """Return a new NGENConfig where any string field containing {placeholders} is expanded."""
+        mapping = config.model_dump()
 
-        Args:
-            config: Config object with placeholders
+        def expand(value):
+            if isinstance(value, str):
+                value = os.path.expandvars(value)
+                try:
+                    return value.format(**mapping)
+                except KeyError as e:
+                    raise KeyError(
+                        f"Placeholder {{{e.args[0]}}} not found in config fields."
+                    )
+            return value
 
-        Returns:
-            Config object with placeholders substituted
+        expanded = {k: expand(v) for k, v in mapping.items()}
+        return NGENConfig(**expanded)
 
-        """
-        # Create a context dictionary with general config parameters
-        context = {
-            "vpu": config.vpu if hasattr(config, "vpu") else None,
-            "run_name": config.run_name if hasattr(config, "run_name") else None,
-            "base_dir": config.base_dir if hasattr(config, "base_dir") else None,
-            "start_time": config.start_time if hasattr(config, "start_time") else None,
-            "end_time": config.end_time if hasattr(config, "end_time") else None,
-            "nprocs": config.nprocs if hasattr(config, "nprocs") else None,
-            "par_file": config.par_file if hasattr(config, "par_file") else None,
-            "pair_file": config.pair_file if hasattr(config, "pair_file") else None,
-            "gpgk_file": config.gpgk_file if hasattr(config, "gpgk_file") else None,
-            "config_template": config.config_template
-            if hasattr(config, "config_template")
-            else None,
-            "log_file": config.log_file if hasattr(config, "log_file") else None,
-            "log_level": config.log_level if hasattr(config, "log_level") else None,
-            "algorithm": config.algorithm if hasattr(config, "algorithm") else None,
-        }
 
-        # remove items with None values from context
-        context = {k: v for k, v in context.items() if v is not None}
+def get_args() -> argparse.Namespace:
+    """Parse command line arguments."""
+    # Create the parser
+    parser = argparse.ArgumentParser(
+        description="Standalone driver for running ngen simulation for a VPU with regionalized parameters."
+    )
+    parser.add_argument(
+        "--config_ngen", required=True, help="Path to NGEN configuration file"
+    )
+    args = parser.parse_args()
 
-        # substitute placeholders in the config
-        config = recursive_substitute(config, context)
-        config.nprocs
-        return config
+    return args
 
 
 if __name__ == "__main__":
@@ -441,14 +476,15 @@ if __name__ == "__main__":
     args = get_args()
 
     config_dict = NGENConfigProcessor(args.config_ngen).to_dict()
-    config_dict["run_name"] = config_dict["algorithm"]  # use algorithm as run name
 
     # create output directory
     out_dir = (
         Path(config_dict["base_dir"])
+        / "outputs"
+        / "ngen"
         / "regionalization"
-        / config_dict["run_name"]
-        / config_dict["vpu"]
+        / (config_dict["run_name"] + "_" + config_dict["algorithm"])
+        / ("vpu_" + config_dict["vpu"])
         / "Output"
     )
     out_dir.mkdir(parents=True, exist_ok=True)

@@ -1,0 +1,25 @@
+sample_file_path|inputs/region/attr_datasets/ngen/attr_ngen_conus.parquet
+title|File containing NGEN attribute data for all catchments in a NWM domain (e.g., CONUS).
+divide_id|Unique identifier for each catchment.
+dksat|NWM parameter: saturated hydraulic conductivity
+psisat|NWM parameter: saturated capillary head
+smcmax|NWM parameter: saturated soil moisture content
+smcwlt|NWM parameter: wilting point soil moisture content
+bexp|NWM parameter: beta exponent on Clapp-Hornberger (1978) soil water relations
+cwpvt|NWM parameter: Canopy wind parameter for canopy wind profile formulation
+mfsno|NWM parameter: Melt factor for snow depletion curve
+mp|NWM parameter: Slope of Ball-Berry conductance relationship
+refkdt|NWM parameter: Soil infiltration parameter
+slope_1km|NWM parameter: Coeffecient controlling the drainage out of the soil bottom (0=no-flow)
+vcmx25|NWM parameter: Maximum carboxylation at 25 degC
+Zmax|NWM parameter: maximum storage in the conceptual reservoir
+Expon|NWM parameter: exponent for nonlinear ground water reservoir (1.0 for linear reservoir)
+centroid_x|centroid_x of catchment
+centroid_y|centroid_y of catchment
+impervious|percentage of impervious area
+elevation|mean elevation catchment
+slope|mean slope of catchment
+aspect|mean aspect of catchment
+ISLTYP|dominant soil type
+IVGTYP|dominant vegetation class
+vpuid|VPU ID of catchment

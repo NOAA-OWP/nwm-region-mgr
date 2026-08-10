@@ -26,17 +26,17 @@ class ManualPairer:
     @property
     def divide_col(self):
         """Get the divide column name from the configuration."""
-        return self.config.general.id_col.get("divide", "divide_id")
+        return getattr(self.config.general.id_col, "divide", "divide_id")
 
     @property
     def donor_col(self):
         """Get the donor column name from the configuration."""
-        return self.config.general.id_col.get("donor", "donor_id")
+        return getattr(self.config.general.id_col, "donor", "donor")
 
     @property
     def gage_col(self):
         """Get the gage column name from the configuration."""
-        return self.config.general.id_col.get("gage", "gage_id")
+        return getattr(self.config.general.id_col, "gage", "gage_id")
 
     @property
     @lru_cache
@@ -144,9 +144,12 @@ class ManualPairer:
 
     def get_regionalization_output_file(self, vpu: str, algorithm: str) -> Path:
         """Construct the path to the regionalization output file for a given VPU."""
-        return self.config.output.get("pairs").get_file_path(
-            vpu=vpu, algorithm=algorithm
-        )
+        out = getattr(self.config.output, "pairs", None)
+        if out is None:
+            msg = "Output configuration for 'pairs' is not defined."
+            logger.error(msg)
+            raise ValueError(msg)
+        return out.get_file_path(vpu=vpu, algorithm=algorithm)
 
     def run_manual_pairing(self, vpu: str):
         """Run the manual pairing process and save the updated DataFrame."""

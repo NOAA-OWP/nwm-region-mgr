@@ -1,0 +1,80 @@
+sample_file_path|outputs/region/params/formulation_params_gower_conus_vpu03S.csv
+title|Formulation and calibrated parameters for each donor basin.
+formulation|Formulation assigned to the calibration basin. Modules within the formulation are separated by commas.
+MFSNO|NOM parameter: Melt factor for snow depletion curve
+CWP|NOM parameter: Canopy water capacity
+VCMX25|NOM parameter: Maximum canopy storage
+MP|NOM parameter: MP
+RSURF_SNOW|NOM parameter: Snow surface roughness
+RSURF_EXP|NOM parameter: Snow surface roughness exponent
+SCAMAX|NOM parameter: SCAMAX
+b|CFE parameter: b
+satdk|CFE parameter: satdk
+satpsi|CFE parameter: satpsi
+slope|CFE parameter: slope
+maxsmc|CFE parameter: maxsmc
+wltsmc|CFE parameter: wltsmc
+max_gw_storage|CFE parameter: max_gw_storage
+Cgw|CFE parameter: Cgw
+expon|CFE parameter: expon
+Kn|CFE parameter: Kn
+Klf|CFE parameter: Klf
+refkdt|CFE parameter: refkdt
+a_Xinanjiang_inflection_point_parameter|CFE-X parameter: a_Xinanjiang_inflection_point_parameter
+b_Xinanjiang_shape_parameter|CFE-X parameter: b_Xinanjiang_shape_parameter
+x_Xinanjiang_shape_parameter|CFE-X parameter: x_Xinanjiang_shape_parameter
+mfmax|snow-17 parameter: mfmax
+uadj|snow-17 parameter: uadj
+si|snow-17 parameter: si
+mfmin|snow-17 parameter: mfmin
+scf|snow-17 parameter: scf
+nmf|snow-17 parameter: nmf
+tipm|snow-17 parameter: tipm
+pxtemp|snow-17 parameter: pxtemp
+plwhc|snow-17 parameter: plwhc
+daygm|snow-17 parameter: daygm
+smcmin|lasam parameter: smcmin
+smcmax|lasam parameter: smcmax
+van_genuchten_alpha|lasam parameter: van_genuchten_alpha
+van_genuchten_n|lasam parameter: van_genuchten_n
+hydraulic_conductivity|lasam parameter: hydraulic_conductivity
+ponded_depth_max|lasam parameter: ponded_depth_max
+field_capacity|lasam parameter: field_capacity
+df|UEB parameter: df
+cc|UEB parameter: cc
+hcan|UEB parameter: hcan
+lai|UEB parameter: lai
+subalb|UEB parameter: subalb
+ems|UEB parameter: ems
+cg|UEB parameter: cg
+zo|UEB parameter: zo
+rho|UEB parameter: rho
+rhog|UEB parameter: rhog
+Ks|UEB parameter: Ks
+de|UEB parameter: de
+avo|UEB parameter: avo
+apr|UEB parameter: apr
+uztwm|sac-sma parameter: uztwm
+uzfwm|sac-sma parameter: uzfwm
+lztwm|sac-sma parameter: lztwm
+lzfsm|sac-sma parameter: lzfsm
+lzfpm|sac-sma parameter: lzfpm
+adimp|sac-sma parameter: adimp
+uzk|sac-sma parameter: uzk
+lzpk|sac-sma parameter: lzpk
+lzsk|sac-sma parameter: lzsk
+zperc|sac-sma parameter: zperc
+rexp|sac-sma parameter: rexp
+pctim|sac-sma parameter: pctim
+pfree|sac-sma parameter: pfree
+riva|sac-sma parameter: riva
+side|sac-sma parameter: side
+szm|topmodel parameter: szm
+t0|topmodel parameter: t0
+td|topmodel parameter: td
+chv|topmodel parameter: chv
+rv|topmodel parameter: rv
+srmax|topmodel parameter: srmax
+sr0|topmodel parameter: sr0
+xk0|topmodel parameter: xk0
+

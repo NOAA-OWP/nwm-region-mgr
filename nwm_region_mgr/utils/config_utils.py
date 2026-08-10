@@ -3,15 +3,22 @@
 config_utils.py
 
 Classes/Functions:
-- LoggingConfig: Pydantic model for logging configuration.
-- BaseGeneralConfig: Pydantic model for general settings of the application.
-- BaseOutputConfig: Pydantic model for output settings of the application.
-- BaseConfig: Pydantic model for the base configuration of the application.
-- BaseConfigProcessor: base class for processing and validating configurations
+    - LoggingConfig: Pydantic model for logging configuration.
+    - BaseGeneralConfig: Pydantic model for general settings of the application.
+    - BaseOutputConfig: Pydantic model for output settings of the application.
+    - BaseConfig: Pydantic model for the base configuration of the application.
+    - BaseConfigProcessor: base class for processing and validating configurations
     - _deep_merge_configs: Recursively merge two dictionaries, with values from dict #2 overwriting those in dict #1.
     - _load_and_validate_config: Load a YAML file, validate its structure using Pydantic
     - _substitute_placeholders: Substitute placeholders in the config with actual values.
     - load_and_process_config: Load, validate, process, and save the configuration files.
+    - _validate_paths: Validate that all file and directory paths exist.
+    - _assemble_file_paths: Assemble file paths from the configuration.
+    - _required_columns_calval_stats: Return a set of required columns for calibration/validation statistics.
+    - _file_required_column_map: Return a dictionary mapping files to required columns.
+    - PydanticDictLike: Stand-in for dictionary-like behavior when you want specificity of a pydantic model.
+    - FieldCrosswalk: Mapping of column names for unique identifiers in all require files for regionalization.
+    - LayerCrosswalk: Dictionary mapping layer names for hydrofabric files.
 
 """
 
@@ -21,7 +28,7 @@ from contextlib import contextmanager
 from functools import lru_cache, reduce
 from pathlib import Path
 from time import time
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, Iterator, List, Literal, Optional, Tuple, Union
 
 import geopandas as gpd
 import pandas as pd
@@ -45,12 +52,24 @@ logger = logging.getLogger(__name__)
 class LoggingConfig(BaseModel):
     """Logging configuration for the application."""
 
-    level: Optional[str] = "INFO"
-    """Logging level, e.g., 'DEBUG', 'INFO', 'WARNING', 'SEVERE', 'FATAL'."""
-    log_to_file: Optional[bool] = True
-    """Whether to log to a file."""
-    file: Optional[str] = None
-    """Path to the log file. If not provided, logging will be to console only."""
+    level: Literal["debug", "info", "warning", "error", "critical"] = Field(
+        description="Logging level.", examples="debug", default="info"
+    )
+
+    log_to_file: bool = Field(
+        description=(
+            "Whether to log to a file. If set to True, logging messages will be written to "
+            "the specified log file, in addition to the console."
+        ),
+        default=False,
+        examples=False,
+    )
+
+    file: str | None = Field(
+        description="Path to the log file. If not provided, logging will be written to console only.",
+        examples="logfile.log",
+        default=None,
+    )
 
     @model_validator(mode="after")
     def check_log_level(self) -> "LoggingConfig":
@@ -105,64 +124,245 @@ class NGENConfig(BaseModel):
     """Number of processors to use."""
 
 
+class PydanticDictLike(BaseModel):
+    """Stand-in for dictionary-like behavior when you want specificity of a pydantic model."""
+
+    @property
+    def as_dict(self) -> dict[str, Any]:
+        """Return the model as a dictionary."""
+        return self.model_dump()
+
+    def get(self, key: str, default=None):
+        """Get a value from the model by key, with an optional default."""
+        return getattr(self, key, default)
+
+    def items(self) -> Iterator[Tuple[str, Any]]:
+        """Return an iterator over the model's (key, value) pairs."""
+        return self.model_dump().items()
+
+    def keys(self) -> Iterator[str]:
+        """Return an iterator over the model's keys."""
+        return self.model_dump().keys()
+
+    def values(self) -> Iterator[Any]:
+        """Return an iterator over the model's values."""
+        return self.model_dump().values()
+
+    def lower_case(self) -> "PydanticDictLike":
+        """Return a new instance with all string fields lowercased."""
+        data = {
+            k: (v.lower() if isinstance(v, str) else v)
+            for k, v in self.model_dump().items()
+        }
+        return self.__class__(**data)
+
+
+class FieldCrosswalk(PydanticDictLike):
+    """Mapping of column names for unique identifiers in all require files for regionalization."""
+
+    divide: str = Field(
+        description="Column name for divide (catchment) ID.", default="divide_id"
+    )
+
+    gage: str = Field(description="Column name for gage (basin) ID.", default="gage_id")
+
+    huc12: str = Field(description="Column name for HUC12 ID.", default="huc_12")
+
+    vpu: str = Field(description="Column name for VPU ID.", default="vpuid")
+
+    drainage_area: str = Field(
+        description="Column name for drainage area.", default="areasqkm"
+    )
+
+
+class LayerCrosswalk(PydanticDictLike):
+    """Dictionary mapping layer names for hydrofabric files."""
+
+    huc12: str = Field(
+        description="Layer name for HUC12 hydrofabric file.",
+        default="WBDSnapshot_National",
+    )
+
+    ngen: str = Field(
+        description="Layer name for NextGen hydrofabric file.", default="divides"
+    )
+
+
 class BaseGeneralConfig(BaseModel):
     """Base general settings for the formulation regionalization application."""
 
-    run_name: str
-    """Name of the run, used to create output folders and files."""
-    domain: str
-    """Define NWM domain. Options: conus, ak, hi, prvi."""
-    vpu_list: Union[List[str], str]
-    """List of VPUs within the domain or 'all' to process all."""
-
-    base_dir: str
-    """Path to base directory for input/output files."""
-    ngen_hydrofabric_file: Path | str | Dict[str, Path] | Dict[str, str] = Field()
-    """Path to NextGen hydrofabric file, e.g., vpu_01.gpkg."""
-    gage_divide_cwt_file: Path | str = Field()
-    """Path to CSV or parquet file with gage divide CWTs, with columns 'divide_id' and 'gage_id'."""
-    donor_gage_file: Path | str = Field()
-    """Path to CSV file with donor gage information, including 'gage_id', 'longitude', and 'latitude'."""
-    calval_stats_file: Path | str = Field()
-    """Path to file with calibration/validation statistics, e.g., 'stat_calval_all_conus.parquet'."""
-    calib_param_file: Path | str = Field()
-    """Path to file containing calibration parameters for all gages in the domain."""
-
-    approach_calib_basins: Optional[str] = (
-        "regionalization"  # Options: 'regionalization', 'summary_score'
+    run_name: str = Field(
+        description="Name of the run, used to create output folders and files.",
+        examples="test",
+        default="test",
     )
-    """Strategy for assigning formulations to calibrated basins."""
 
-    id_col: Optional[dict[str, str]] = Field(
-        default_factory=lambda: {
+    domain: Literal["conus", "ak", "hi", "prvi"] = Field(
+        description="Which National Water Model Domain this run uses.",
+        examples="conus",
+        default="conus",
+    )
+
+    vpu_list: Union[List[str], str] = Field(
+        description=(
+            "List of vector processing units (VPUs) to be processed within the domain. "
+            "Set to 'all' to process all VPUs in the domain (not recommended for conus since there are many VPUs)."
+        ),
+        examples=["03S"],
+        default=["03S"],
+    )
+
+    base_dir: str = Field(
+        description="Path to base directory for input/output files.",
+        examples="/root/nwm-region-mgr/data/",
+        default="./data/",
+    )
+
+    ngen_hydrofabric_file: Path | str | Dict[str, Path] | Dict[str, str] = Field(
+        description=(
+            "Path to NextGen hydrofabric file. Can be: 1) a single file path (Path or str), e.g., 'vpu_01.gpkg' "
+            "or 2) a dictionary mapping VPU strings to file paths, e.g., {'09': 'vpu_09.gpkg'}."
+            "If providing a string with placeholders like {vpu_list}, they will be substituted accordingly and "
+            "expanded to a dictionary mapping each VPU to its corresponding file."
+            " This file must include columns 'divide_id', 'vpuid' and 'geometry'."
+        ),
+        examples="{base_dir}/inputs/hydrofabric/vpu_09.gpkg",
+        default="vpu_03S.gpkg",
+    )
+
+    gage_divide_cwt_file: Path | str = Field(
+        description="Path to CSV or parquet file with gage divide CWTs, with columns 'divide_id' and 'gage_id'.",
+        examples="{base_dir}/inputs/calib_gage_divide_{domain}.parquet",
+        default="calib_gage_divide_{domain}.parquet",
+    )
+
+    donor_gage_file: Path | str = Field(
+        description="Path to CSV file with donor gage information, including 'gage_id', 'longitude', and 'latitude'.",
+        examples="{base_dir}/inputs/gages_nwm4_calib_all.csv",
+        default="gages_nwm4_calib_all.csv",
+    )
+
+    calval_stats_file: Path | str = Field(
+        description=(
+            "Path to CSV or parquet file with calibration/validation statistics for all calibration gages "
+            "and formulations, e.g., 'stat_calval_all_conus.parquet', 'stat_calval_all_conus.csv'. "
+            "Must include columns for 'gage_id', 'formulation', and relevant metrics to be used for formulation "
+            "and parameter regionalization."
+        ),
+        examples=["stat_calval_all_{domain}.csv", "stat_calval_all_{domain}.parquet"],
+        default="stat_calval_all_{domain}.parquet",
+    )
+
+    calib_param_file: Path | str = Field(
+        description=(
+            "Path to CSV or parquet file containing calibrated parameters for all calibration gages "
+            "and formulations in the domain. Must include columns for 'gage_id', 'formulation', and "
+            "calibrated parameters."
+        ),
+        examples=["calib_params_{domain}.csv", "calib_params_{domain}.parquet"],
+        default="calib_params_{domain}.csv",
+    )
+
+    approach_calib_basins: Literal["regionalization", "summary_score"] = Field(
+        description=(
+            "Strategy for assigning formulations to calibrated basins. Valid options are 'regionalization' "
+            "(assign the formulation chosen for the region) or 'summary_score' (assign based on formulation "
+            "summary scores for the calibrated basin)."
+        ),
+        examples=["regionalization", "summary_score"],
+        default="summary_score",
+    )
+
+    id_col: FieldCrosswalk = Field(
+        description="Dictionary mapping column names for unique identifiers in all applicable files.",
+        examples={
             "divide": "divide_id",
             "gage": "gage_id",
             "huc12": "huc_12",
             "vpu": "vpuid",
             "drainage_area": "areasqkm",
-        }
+        },
+        default_factory=FieldCrosswalk,
     )
-    """Dictionary mapping column names for unique identifiers in all applicable files."""
 
-    layer_name: Optional[dict[str, str]] = Field(
-        default_factory=lambda: {
+    layer_name: LayerCrosswalk = Field(
+        description=(
+            "Dictionary mapping layer names for hydrofabric files. "
+            "Identifies the layer in each hydrofabric file to be used during regionalization."
+        ),
+        examples={
             "huc12": "WBDSnapshot_National",
             "ngen": "divides",
-        }
+        },
+        default_factory=LayerCrosswalk,
     )
-    """Dictionary mapping layer names for hydrofabric files."""
 
-    logging: Optional[LoggingConfig] = None
-    """Logging configuration for the application."""
+    logging: LoggingConfig = Field(
+        description="Logging configuration for the application.",
+        examples={
+            "level": "info",
+            "log_to_file": True,
+            "file": "logs/{run_name}.log",
+        },
+        default_factory=LoggingConfig,
+    )
 
     @model_validator(mode="after")
     def lower_case_ids(self) -> "BaseGeneralConfig":
         """Ensure that all ID columns are in lower case."""
         if self.id_col:
-            self.id_col = {k.lower(): v.lower() for k, v in self.id_col.items()}
+            # self.id_col = {k.lower(): v.lower() for k, v in self.id_col.items()}
+            self.id_col = self.id_col.lower_case()
 
         if self.layer_name:
-            self.layer_name = {k.lower(): v.lower() for k, v in self.layer_name.items()}
+            # self.layer_name = {k.lower(): v.lower() for k, v in self.layer_name.items()}
+            self.layer_name = self.layer_name.lower_case()
+        return self
+
+    @model_validator(mode="after")
+    def check_vpu_list(self) -> "BaseGeneralConfig":
+        """Ensure that the VPU list is valid."""
+        valid_vpus = {
+            "conus": [
+                "01",
+                "02",
+                "03N",
+                "03S",
+                "03W",
+                "04",
+                "05",
+                "06",
+                "07",
+                "08",
+                "09",
+                "10L",
+                "10U",
+                "11",
+                "12",
+                "13",
+                "14",
+                "15",
+                "16",
+                "17",
+                "18",
+            ],
+            "ak": ["ak"],
+            "hi": ["hi"],
+            "prvi": ["prvi"],
+        }
+
+        if isinstance(self.vpu_list, str) and self.vpu_list.lower() == "all":
+            self.vpu_list = valid_vpus[self.domain]
+        elif isinstance(self.vpu_list, list):
+            for vpu in self.vpu_list:
+                if vpu not in valid_vpus[self.domain]:
+                    msg = f"Invalid VPU '{vpu}' for domain '{self.domain}'. Valid options are: {valid_vpus[self.domain]}"
+                    logger.error(msg)
+                    raise ValueError(msg)
+        else:
+            msg = f"'vpu_list' must be a list of VPUs or 'all'. Got: {self.vpu_list}"
+            logger.error(msg)
+            raise ValueError(msg)
 
         return self
 
@@ -170,21 +370,44 @@ class BaseGeneralConfig(BaseModel):
 class BaseOutputConfig(BaseModel):
     """Base Output Manager."""
 
-    save: bool
-    """Whether to save output files"""
-    path: Path | str
-    """Path to save output files. If a directory, the 'stem' and 'format' must be specified."""
-    stem: Optional[str | Dict[str, str]] = None
-    """File stem for output files, used to create unique file names based on the path."""
-    stem_suffix: Optional[str] = None
-    """Suffix for the file stem, used to create unique file names based on the path for specific needs."""
-    format: Optional[str] = None
-    """File format for output files, e.g., 'parquet', 'csv', 'yaml'. If not specified, the path must be a file."""
-    plots: Optional[Dict[str, Any]] = None
-    """Configuration for output plots, if applicable."""
-    plot_path: Optional[str] = None
-    """Path to save output plots, if applicable. If not specified, plots will be saved in the same directory
-    as the output files."""
+    save: bool = Field(
+        description="Whether to save output files",
+        default=True,
+        examples=True,
+    )
+    path: Path | str = Field(
+        description="Path to save output file or files. If a directory, the 'stem' and 'format' must be specified.",
+        examples=None,
+        default=None,
+    )
+    stem: Optional[str | Dict[str, str]] = Field(
+        description="File stem for output files, used to create unique file names based on the path.",
+        default=None,
+        examples=None,
+    )
+    stem_suffix: Optional[str] = Field(
+        description="Suffix for the file stem, used to create unique file names based on the path for specific needs.",
+        default=None,
+        examples=None,
+    )
+    format: Optional[str] = Field(
+        description="File format for output files, e.g., 'parquet', 'csv', 'yaml'. If not specified, the path must be a file.",
+        default=None,
+        examples=None,
+    )
+    plots: Optional[Dict[str, Any]] = Field(
+        description="Configuration for output plots, if applicable.",
+        default=None,
+        examples=None,
+    )
+    plot_path: Optional[str] = Field(
+        description=(
+            "Path to save output plots, if applicable. If not specified, plots will be saved "
+            "in a subfolder 'plots' in the defined output path."
+        ),
+        default=None,
+        examples=None,
+    )
 
     @model_validator(mode="after")
     def check_plot_path(cls, values):
@@ -445,6 +668,7 @@ class BaseConfigProcessor:
         self.config_schema = config_schema
         self.config = self.load_and_process_config
         self.sample_size = sample_size
+        self._expand_user_file_paths(self.config)
 
         self.set_logging()
         self.validate_files()
@@ -538,6 +762,31 @@ class BaseConfigProcessor:
         config = recursive_substitute(config, context)
 
         return config
+
+    def _expand_user_file_paths(self, obj: BaseModel) -> None:
+        """Recursively expand user home directory in file paths within a Pydantic model."""
+        for name, field in type(obj).model_fields.items():
+            val = getattr(obj, name)
+
+            # Always recurse
+            if isinstance(val, BaseModel):
+                self._expand_user_file_paths(val)
+                continue
+
+            if isinstance(val, dict):
+                for v in val.values():
+                    if isinstance(v, BaseModel):
+                        self._expand_user_file_paths(v)
+                continue
+
+            # Apply expansion only when explicitly needed
+            if (
+                ("file" in name or "path" in name or "dir" in name)
+                and isinstance(val, (str, Path))
+                and "~" in str(val)
+            ):
+                expanded = Path(val).expanduser()
+                setattr(obj, name, expanded)
 
     def _required_columns_calval_stats(self, config) -> set[str]:
         """Return a set of required columns for calibration/validation statistics."""
@@ -635,7 +884,9 @@ class BaseConfigProcessor:
                     paths[path1] = Path(val)
                 elif isinstance(val, dict):
                     paths[path1] = {
-                        k: Path(v) for k, v in val.items() if isinstance(v, (str, Path))
+                        k: Path(v).expanduser()
+                        for k, v in val.items()
+                        if isinstance(v, (str, Path))
                     }
                 else:
                     logger.warning(f"Unsupported type for {path1}: {type(val)}")
@@ -718,9 +969,9 @@ class BaseConfigProcessor:
             for file in file_path:
                 if "geometry" in required_columns:
                     layer = (
-                        config.general.layer_name.get("ngen", None)
+                        getattr(config.general.layer_name, "ngen", None)
                         if "ngen" in file_key
-                        else config.general.layer_name.get("huc12", None)
+                        else getattr(config.general.layer_name, "huc12", None)
                     )
                     check_columns_hydrofabric(file, required_columns, layer_name=layer)
                 else:
@@ -781,8 +1032,9 @@ class BaseConfigProcessor:
         logger.info("Successfully validated and processed the configurations.")
 
         # Save the final configuration
-        cc = self.config.output["config_final"]
-        cc.save_to_file(self.config, data_str="Final Configuration")
+        cc = getattr(self.config.output, "config_final", None)
+        if cc is not None:
+            cc.save_to_file(self.config, data_str="Final Configuration")
 
     def set_vpu(self, vpu: str):
         """Set the vpu."""
@@ -792,7 +1044,11 @@ class BaseConfigProcessor:
 
     def set_vpu_gdf(self) -> gpd.GeoDataFrame:
         """Set the GeoDataFrame for the current vpu."""
-        gdf = gpd.read_file(Path(self.config.general.ngen_hydrofabric_file[self.vpu]))
+        layer_name = getattr(self.config.general.layer_name, "ngen", "divides")
+        gdf = gpd.read_file(
+            Path(self.config.general.ngen_hydrofabric_file[self.vpu]),
+            layer=layer_name,
+        )
         gdf = gdf[[self.divide_id_name.lower(), "geometry"]]
 
         self.vpu_gdf = gdf.copy()
@@ -819,32 +1075,32 @@ class BaseConfigProcessor:
     @property
     def divide_id_name(self):
         """Id_name for divide from the config."""
-        return self.config.general.id_col.get("divide", "divide_id")
+        return getattr(self.config.general.id_col, "divide", "divide_id")
 
     @property
     def gage_id_name(self):
         """Id_name for gage from the config."""
-        return self.config.general.id_col.get("gage", "gage_id")
+        return getattr(self.config.general.id_col, "gage", "gage_id")
 
     @property
     def drainage_area_name(self):
         """Id_name for drainage_area from the config."""
-        return self.config.general.id_col.get("drainage_area", "areasqkm")
+        return getattr(self.config.general.id_col, "drainage_area", "areasqkm")
 
     @property
     def huc12_id_name(self):
         """Id_name for huc12 from the config."""
-        return self.config.general.id_col.get("huc12", "huc_12")
+        return getattr(self.config.general.id_col, "huc12", "huc_12")
 
     @property
     def vpu_id_name(self):
         """Id_name for vpu from the config."""
-        return self.config.general.id_col.get("vpu", "vpuid")
+        return getattr(self.config.general.id_col, "vpu", "vpuid")
 
     @property
     def donor_id_name(self):
         """Id_name for donor gage from the config."""
-        return self.config.general.id_col.get("donor", "donor")
+        return getattr(self.config.general.id_col, "donor", "donor")
 
     @property
     def gage_crosswalk_file(self):
@@ -865,3 +1121,64 @@ class BaseConfigProcessor:
     def donor_gages(self):
         """Get the donor gage DataFrame."""
         return read_table(self.donor_gage_file, dtype={self.gage_id_name: str})
+
+    def expand_config_for_vpu(self, vpu: str):
+        """Expand the config to include VPUs (e.g., needed for all donors).
+
+        Some donors may come from nearby VPUs, so we need to make sure that the
+        configuration includes all donor VPUs.
+
+        For example, if the current VPU '03S' uses donor gages from '03W','03N', and '06', then
+        this function will expand the config to include those VPUs as well for the ngen_hydrofabric_file
+        and output files.
+
+        --- Before expansion---
+        ngen_hydrofabric_file:
+            '03S': '/path/to/ngen_hydro_03S.gpkg'
+
+        --- After expansion---
+        ngen_hydrofabric_file:
+            '03S': '/path/to/ngen_hydro_03S.gpkg'
+            '03W': '/path/to/ngen_hydro_03W.gpkg'
+            '03N': '/path/to/ngen_hydro_03N.gpkg'
+            '06':  '/path/to/ngen_hydro_06.gpkg'
+
+        """
+
+        def add_entry_if_missing(d: dict, vpu_key: str) -> dict:
+            if vpu_key not in d:
+                first_key = next(iter(d))
+                d[vpu_key] = d[first_key].replace(first_key, vpu_key)
+
+        add_entry_if_missing(self.config.general.ngen_hydrofabric_file, vpu)
+
+        co = getattr(self.config.output, "summary_score", None)
+        if co is not None:
+            add_entry_if_missing(co.stem, vpu)
+        co = getattr(self.config.output, "formulation", None)
+        if co is not None:
+            add_entry_if_missing(co.stem, vpu)
+
+        # save the expanded configuration
+        if hasattr(self.config.output, "config_final"):
+            getattr(self.config.output, "config_final").save_to_file(
+                self.config, data_str="Expanded final configuration"
+            )
+
+    def get_output_file_path(
+        self,
+        output_section: str,
+        vpu: str = None,
+        algorithm: str = None,
+        use_stem_suffix: bool = False,
+    ):
+        """Get the output file name from the output configuration."""
+        output_config = getattr(self.config.output, output_section, None)
+        if output_config is None:
+            msg = f"Output section '{output_section}' not found in configuration for {self.__class__.__name__}."
+            logger.error(msg)
+            raise ValueError(msg)
+
+        return output_config.get_file_path(
+            vpu, algorithm=algorithm, use_stem_suffix=use_stem_suffix
+        )

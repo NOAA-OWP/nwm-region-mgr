@@ -1,0 +1,26 @@
+sample_file_path|inputs/region/calval_stats/stat_calval_all_conus.parquet
+title|Calibration and validation statistics for all gages in an NWM domain (e.g., CONUS).
+formulation|NextGen formualtion calibrated for a given gage
+gage_id|Unique identifier for each gage
+evalPeriod|Evaluation period for the statistics (e.g., calibration, validation, and full periods)
+bias|Metric: bias
+rmse|Metric: root mean square error
+cor|Metric: Pearson correlation
+nse|Metric: Nash-Sutcliffe efficiency
+nselog|Metric: Nash-Sutcliffe efficiency (logarithmic)
+nseWt|Metric: weighted Nash-Sutcliffe efficiency    
+kge|Metric: Kling-Gupta efficiency
+msof|Metric: mean squared error of the forecast
+hyperResMultiObj|Metric: hyper-resolution multi-objective
+nnsesq|Metric: normalized Nash-Sutcliffe efficiency squared
+eventmultiobj|Metric: event-based multi-objective
+lbem|Metric: log bias error metric
+lbemprime|Metric: modified log bias error metric
+corr1|Metric: correlation coefficient 1
+pod|Metric: probability of detection
+far|Metric: false alarm ratio
+csi|Metric: critical success index
+nnse|Metric: normalized Nash-Sutcliffe efficiency
+peak_bias|Metric: event peak bias
+peak_tm_err_hr|Metric: event peak time error in hours
+event_volume_bias|Metric: event volume bias

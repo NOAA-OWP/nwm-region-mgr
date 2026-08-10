@@ -62,8 +62,13 @@ def main(vpu_str: str):
 
     # output gpkg file
     output_gpkg = (
-        Path("~/data/hydrofabric/gpkg_vpu/") / f"vpu_{vpu_str}_patch.gpkg"
-    ).expanduser()
+        Path("../data/inputs/region/hydrofabric/gpkg_vpu/")
+        / f"vpu_{vpu_str}_patch.gpkg"
+    ).absolute()
+    if output_gpkg.exists():
+        print(f"Output gpkg {output_gpkg} already exists. Skipping extraction.")
+        return
+
     output_gpkg.parent.mkdir(parents=True, exist_ok=True)
 
     if output_gpkg.exists():

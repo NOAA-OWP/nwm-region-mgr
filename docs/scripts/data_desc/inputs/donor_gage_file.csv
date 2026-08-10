@@ -1,0 +1,12 @@
+sample_file_path|inputs/region/gages_nwm4_calib_all.csv
+title|List of all calibration gages accross all NWM domains. Note list of potential donor gages can be a subset of this list, depending on gages included in the cal/val stats file.
+gage_id|Unique identifier for each gage.
+nws_id|National Weather Service (NWS) gage identifier.
+agency|Agency responsible for the gage.
+station_name|Name of the gage station.
+domain|Hydrologic domain of the gage.
+domain_id|Identifier for the hydrologic domain.
+nwm_v3_calibration|Indicates if the gage was used in NWM version 3 calibration.
+headwater_calibration|Indicates if the gage is part of headwater calibration for NWM version 4.
+latitude|Latitude of the gage location.
+longitude|Longitude of the gage location.

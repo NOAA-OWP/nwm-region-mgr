@@ -1,0 +1,14 @@
+vpu: "03S"
+run_name: test
+algorithm: kmeans
+base_dir: /ngen-app/nwm-region-mgr/data
+start_time: '2022-10-01T00:00:00'
+end_time: '2022-10-01T10:00:00'
+nprocs: -1
+par_file: '{base_dir}/outputs/region/{run_name}/params/formulation_params_{algorithm}_conus_vpu{vpu}.csv'
+pair_file: '{base_dir}/outputs/region/{run_name}/pairs/pairs_{algorithm}_conus_vpu{vpu}_mswm.csv'
+gpkg_file: '{base_dir}/inputs/region/hydrofabric/gpkg_vpu/vpu_{vpu}.gpkg'
+config_template: '{base_dir}/inputs/ngen/mswm.config.template.docker'
+log_file: '{base_dir}/outputs/ngen/ngen_{algorithm}_vpu{vpu}.log'
+log_level: INFO
+use_nwm_routing_fallback: false

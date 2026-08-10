@@ -20,17 +20,18 @@ classifiers = [
 requires-python = ">=3.11,<3.12"
 
 dependencies = [
-    "numpy~=1.26.4",
-    "geopandas~=1.0.1",
-    "Shapely~=2.1.1",
-    "fiona~=1.10.1",
-    "pandas~=2.3.1",
+    "numpy~=1.26.4",                    # Match ngen-forcing
+    "geopandas~=1.1.1",                 # Match ngen-forcing
+    "shapely~=2.1.2",                   # Match ngen-forcing
+    "fiona~=1.10.1",                    # Match ngen-forcing
+    "pandas~=2.3.3",                    # Match ngen-forcing
     "pyarrow~=19.0.1",
     "matplotlib~=3.10.5",
     "seaborn~=0.13.2",
-    "pydantic~=2.11.7",
-    "PyYAML~=6.0.2",
-    "charset-normalizer~=3.4.4"
+    "pydantic~=2.11.9",
+    "PyYAML~=6.0.2",                    # Match ngen-forcing
+    "charset-normalizer~=3.4.4",
+    "python-dotenv~=1.2.1"
 ]
 
 [project.optional-dependencies]
@@ -43,7 +44,7 @@ parreg = [
     "scikit_learn_extra~=0.3.0",
     "scipy~=1.16.1"
 ]
-dev = ["pytest~=8.4.1", "ruff~=0.12.10"]
+dev = ["pytest~=8.4.1", "ruff~=0.12.10", "python-dotenv~=1.2.1", "boto3~=1.40.74"]
 docs = ["sphinx", "numpydoc", "sphinx_rtd_theme", "sphinx_design", "pydata-sphinx-theme", "sphinx-autodoc-typehints", "myst-parser"]
 
 [project.urls]

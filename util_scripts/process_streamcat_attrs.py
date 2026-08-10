@@ -90,9 +90,6 @@ def gather_streamcat_attrs():
     return df_list, df_metric_desc
 
 
-df_list, df_metric_desc = gather_streamcat_attrs()
-
-
 def process_streamcat_attrs(df_list):
     """Process StreamCat attributes and merge with NextGen catchments.
 
@@ -157,9 +154,10 @@ def process_streamcat_attr_descriptions(df_metric_desc: pd.DataFrame, output_dir
 def compute_weighted_attrs(
     df_attrs: pd.DataFrame,
     attrs: list,
-    id_col: str = "FEATUREID",
-    output_dir: Path | str = None,
-    domain: str = "conus",
+    id_col: str,
+    output_dir: Path | str,
+    domain: str,
+    cwt_path: Path | str,
 ):
     """Compute area-weighted StreamCat attributes for NextGen catchments.
 
@@ -169,20 +167,12 @@ def compute_weighted_attrs(
         id_col: Column name for catchment ID in attribute dataset.
         output_dir: Output directory to save processed attributes.
         domain: Domain to process StreamCat attributes for.
+        cwt_path: Directory containing crosswalk files for StreamCat attributes.
 
     """
     # ngen-streamcat crosswalk file
     attr_dataset = "streamcat"
-    cwt_file = Path(
-        output_dir,
-        "cwt_ngen_"
-        + attr_dataset
-        + "/cwt_ngen_"
-        + attr_dataset
-        + "_"
-        + domain
-        + ".parquet",
-    )
+    cwt_file = Path(cwt_path, "cwt_ngen_streamcat_" + domain + ".parquet")
 
     # read the crosswalk file
     df_cwt = pd.read_parquet(cwt_file)
@@ -198,7 +188,9 @@ def compute_weighted_attrs(
     weighted["divide_id"] = df_attrs1["divide_id"]
 
     # Group by catchment and compute sum
-    weighted_sum = weighted.groupby("divide_id").sum()
+    weighted_sum = weighted.groupby("divide_id").sum(
+        min_count=1
+    )  # min_count=1 to avoid summing to 0 when all values are NaN
 
     # Divide by sum of weights per group to get weighted mean
     sum_weights = df_attrs1.groupby("divide_id")["overlap_percentage"].sum()
@@ -206,7 +198,10 @@ def compute_weighted_attrs(
 
     # save attr data to parquet file
     outfile = Path(
-        output_dir, "attr_datasets/attr_" + attr_dataset + "_" + domain + ".parquet"
+        output_dir,
+        "attr_datasets",
+        attr_dataset,
+        "attr_" + attr_dataset + "_" + domain + ".parquet",
     )
     weighted_mean.to_parquet(outfile, engine="pyarrow")
     print(f"Saved processed StreamCat attributes to {outfile}")
@@ -224,9 +219,15 @@ if __name__ == "__main__":
         help="Domain to process StreamCat attributes for.",
     )
     parser.add_argument(
+        "--cwt_dir",
+        type=str,
+        default="~/data/crosswalks/cwt_ngen_streamcat/",
+        help="Directory containing crosswalk files for StreamCat attributes.",
+    )
+    parser.add_argument(
         "--output_dir",
         type=str,
-        default="~/repos/nwm-region-mgr/data/inputs",
+        default="~/repos/nwm-region-mgr/data/inputs/region",
         help="Output directory for processed attributes and descriptions.",
     )
     args = parser.parse_args()
@@ -246,5 +247,10 @@ if __name__ == "__main__":
     attrs = df_metric_desc["attr_name"].unique().tolist()
     id_col = "FEATUREID"
     compute_weighted_attrs(
-        df_attrs, attrs, id_col, Path(args.output_dir).expanduser(), args.domain
+        df_attrs,
+        attrs,
+        id_col,
+        Path(args.output_dir).expanduser(),
+        args.domain,
+        Path(args.cwt_dir).expanduser(),
     )

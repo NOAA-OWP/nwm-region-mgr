@@ -5,6 +5,8 @@ from nwm_region_mgr.utils.config_utils import (
     BaseConfigProcessor,
     BaseGeneralConfig,
     BaseOutputConfig,
+    FieldCrosswalk,
+    LayerCrosswalk,
     LoggingConfig,
 )
 from nwm_region_mgr.utils.dict_utils import (
@@ -36,6 +38,8 @@ __all__ = [
     "BaseOutputConfig",
     "BaseConfigProcessor",
     "LoggingConfig",
+    "FieldCrosswalk",
+    "LayerCrosswalk",
     "remove_nulls",
     "convert_enum_to_value",
     "flatten_dict",

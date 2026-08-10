@@ -1,4 +1,4 @@
-"""Synthetic data."""
+"""Function to create synthetic data for training Unsupervised Random Forest (URF) models."""
 
 import numpy
 
