@@ -91,7 +91,7 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--bucket", default="ngwpc-dev", help="S3 bucket name")
+    parser.add_argument("--bucket", default="noaa-owp-dev", help="S3 bucket name")
     parser.add_argument(
         "--prefixes",
         nargs="*",

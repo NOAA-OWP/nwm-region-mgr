@@ -14,7 +14,7 @@ The regionalization workflow includes the following steps:
 
 In the INT/EA/UAT clusters, all software dependencies for regionalization are installed and managed through 
 NWM-RTE (Run Time Environment, `/ngencerf-app/nwm-rte`). Regionalization workflows are executed via docker containers using an 
-[nwm-rte image](https://github.com/NGWPC/nwm-rte/pkgs/container/nwm-rte).
+[nwm-rte image](https://github.com/NOAA-OWP/nwm-rte/pkgs/container/nwm-rte).
 
 Note prior to running the regionalization workflow, make sure your user account has permissions to access the docker socket and pull images from the registry. Refer to the [Docker permissions](#docker-permissions) subsection below for details.
 
@@ -225,6 +225,9 @@ Update the `configs/config_eval.yaml` file as follows:
  - Set **file_paths.output_dir** to point to the directory where evaluation outputs should be saved. Here we add the **run_name** from regionalization `test1` (e.g., `'{base_dir}/outputs/eval/test1/{location_set_name}'`), to ensure evaluation outputs are also organized by regionalization runs.
  - Update fields in metics and plotting sections as desired. Here we will compute and plot a set of default evaluation metrics: KGE (Kling-Gupta Efficiency), NSE (Nash-Sutcliffe Efficiency), NNSE (Normalized NSE), and Correlation (CORR). Note the **lead_times** fields are not applicable here since we are evaluating simulations.
 
+> [!CAUTION]
+> This confluence is unavailable
+
 Note: if you would like to explore other configuration options for evaluation, refer to the [nwm.verf documentation](
 https://confluence.nextgenwaterprediction.com/spaces/NGWPC/pages/54132769/Forecast+Verification+nwm-verf+Configuration)
 
@@ -375,7 +378,7 @@ for your needs:
 CONFIG_DIR="./configs_test"
 
 # Optional arguments to override the defaults
-image_tag="pr-22-build" # default: latest. Check available image tags at: https://github.com/NGWPC/nwm-rte/pkgs/container/nwm-rte
+image_tag="pr-22-build" # default: latest. Check available image tags at: https://github.com/NOAA-OWP/nwm-rte/pkgs/container/nwm-rte
 pull_image=false #default: false
 workflow_options=(parreg ngen eval) #default: parreg. Valid options: formreg, parreg, ngen, eval
 dry_run=false #default: false
@@ -602,7 +605,7 @@ Installing nwm_region_mgr requires
 Since nwm_region_mgr is not currently on PyPI, it must be installed from source. To download this repository, run
 
 ```bash
-git clone https://github.com/NGWPC/nwm-region-mgr.git
+git clone https://github.com/NOAA-OWP/nwm-region-mgr.git
 cd nwm-region-mgr
 ```
 
@@ -666,11 +669,14 @@ with regionalized parameters and formulations from a Docker container. Follow in
 
 ### STEP 3: Evaluate NGEN simulation with nwm.verf
 
-#### 1) Donwload and install [nwm.verf](https://github.com/NGWPC/nwm-verf)
-It is recommentded you install nwm.verf in its own venv. Note [nwm.eval](https://github.com/NGWPC/nwm-eval-mgr) needs to installed as a dependency
+#### 1) Donwload and install [nwm.verf](https://github.com/NOAA-OWP/nwm-verf)
+It is recommentded you install nwm.verf in its own venv. Note [nwm.eval](https://github.com/NOAA-OWP/nwm-eval-mgr) needs to installed as a dependency
 
 #### 2) Set up configurations for evaluation
-Follow example config at [config_eval.yaml](https://github.com/NGWPC/nwm-region-mgr/blob/development/sample_files/configs/config_eval.yaml)
+Follow example config at [config_eval.yaml](https://github.com/NOAA-OWP/nwm-region-mgr/blob/development/sample_files/configs/config_eval.yaml)
+
+> [!CAUTION]
+> This confluence URL is unavailable
 
 Check out what metrics are currently supported [here](https://confluence.nextgenwaterprediction.com/display/NGWPC/Forecast+Verification+%28ngen-verf%29%3A+Configuration)
 

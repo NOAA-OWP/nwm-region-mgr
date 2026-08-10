@@ -191,7 +191,7 @@ def process_file(
     title: str,
     path: str,
     s3_client=None,
-    bucket: str = "ngwpc-dev",
+    bucket: str = "noaa-owp-dev",
 ) -> str:
     """Load a file (csv, parquet, gpkg, gdb) and return an RST schema string."""
     df = pd.DataFrame()

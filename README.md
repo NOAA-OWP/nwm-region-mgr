@@ -1,7 +1,7 @@
 # Formulation and Parameter Regionalization for the NextGen Framework
-[![Build](https://img.shields.io/github/actions/workflow/status/ngwpc/nwm-region-mgr/ci.yaml?branch=main)](.github/workflows/ci.yml)
+[![Build](https://img.shields.io/github/actions/workflow/status/noaa-owp/nwm-region-mgr/ci.yaml?branch=main)](.github/workflows/ci.yml)
 [![License: BSD 2-Clause](https://img.shields.io/badge/License-BSD%202--Clause-orange.svg)](https://opensource.org/license/bsd-2-clause)
-[![Release](https://img.shields.io/github/v/release/ngwpc/nwm-region-mgr)](https://github.com/NGWPC/nwm-region-mgr)
+[![Release](https://img.shields.io/github/v/release/noaa-owp/nwm-region-mgr)](https://github.com/NOAA-OWP/nwm-region-mgr)
 ![Code Style: Ruff](https://img.shields.io/badge/code%20style-ruff-orange.svg)
 ![Linter: Ruff](https://img.shields.io/badge/linter-ruff-orange)
 
@@ -23,7 +23,7 @@
 
 ## Docker Run Time Environment (RTE)
 ### Step 0. Build Docker images and download data
-Follow NMW-RTE [README](https://github.com/NGWPC/nwm-rte/blob/development/README.md) to build Docker images and download sample data.
+Follow NMW-RTE [README](https://github.com/NOAA-OWP/nwm-rte/blob/development/README.md) to build Docker images and download sample data.
 
 > **Note:** A single ngen RTE Docker image needs to be built before continuing to the regionalization steps below. 
 > Make sure that RTE's build script runs successfully.  RTE's default run script (for forecasting) is not used by the regionalization workflow and should be skipped.
@@ -101,7 +101,7 @@ See `[RTE_REPO_ROOT]/run_region.sh --help` for more details on the command line 
 #### 1. clone ngen-region-mgr from Github
 
 ```bash
-git clone https://github.com/NGWPC/nwm-region-mgr.git
+git clone https://github.com/NOAA-OWP/nwm-region-mgr.git
 cd nwm-region-mgr
 ```
 
@@ -164,13 +164,13 @@ with regionalized parameters and formulations from a Docker container. Follow in
 
 ### STEP 3: Evaluate NGEN simulation with nwm.verf
 
-#### 1) Donwload and install [nwm.verf](https://github.com/NGWPC/nwm-verf)
-It is recommentded you install nwm.verf in its own venv. Note [nwm.eval](https://github.com/NGWPC/nwm-eval-mgr) needs to installed as a dependency
+#### 1) Donwload and install [nwm.verf](https://github.com/NOAA-OWP/nwm-verf)
+It is recommentded you install nwm.verf in its own venv. Note [nwm.eval](https://github.com/NOAA-OWP/nwm-eval-mgr) needs to installed as a dependency
 
 #### 2) Set up configurations for evaluation
-Follow example config at [config_eval.yaml](https://github.com/NGWPC/nwm-region-mgr/blob/development/sample_files/configs/config_eval.yaml)
+Follow example config at [config_eval.yaml](https://github.com/NOAA-OWP/nwm-region-mgr/blob/development/sample_files/configs/config_eval.yaml)
 
-Check out what metrics are currently supported [here](https://confluence.nextgenwaterprediction.com/display/NGWPC/Forecast+Verification+%28ngen-verf%29%3A+Configuration)
+Check out what metrics are currently supported [here](https://confluence.nextgenwaterprediction.com/display/NOAA-OWP/Forecast+Verification+%28ngen-verf%29%3A+Configuration)
 
 Sample input data can be downloaded from **s3://ngwpc-dev/regionalization/data/inputs/eval** 
 
@@ -188,10 +188,10 @@ Outputs from evaluation can be found in *[output_dir]* as specified in **config_
 
 ### Test regionalization for other VPUs or different formulations
 
-- Create pseudo forcing data by recycling existing forcing files, using this [script](https://github.com/NGWPC/nwm-region-mgr/blob/yliu_NGPWC-6984/util_scripts/run_create_pseudo_forcing_csv.sh)
-- Create new pseduo calibration/validation stats for different formulations, using this [script](https://github.com/NGWPC/nwm-region-mgr/blob/yliu_NGPWC-6984/util_scripts/run_create_pseudo_calval_stats.sh)
-- Create geopackages for a new VPU using this [script](https://github.com/NGWPC/nwm-region-mgr/blob/yliu_NGPWC-6984/util_scripts/subset_conus_gpkg_by_vpu.py)
-- Create gage list files and NGEN divide-gage crosswalk file for a new domain using this [script](https://github.com/NGWPC/nwm-verf/blob/yliu_NGWPC-6986/utils/create_ngen_crosswalk_regionalization.py)
+- Create pseudo forcing data by recycling existing forcing files, using this [script](https://github.com/NOAA-OWP/nwm-region-mgr/blob/yliu_NGPWC-6984/util_scripts/run_create_pseudo_forcing_csv.sh)
+- Create new pseduo calibration/validation stats for different formulations, using this [script](https://github.com/NOAA-OWP/nwm-region-mgr/blob/yliu_NGPWC-6984/util_scripts/run_create_pseudo_calval_stats.sh)
+- Create geopackages for a new VPU using this [script](https://github.com/NOAA-OWP/nwm-region-mgr/blob/yliu_NGPWC-6984/util_scripts/subset_conus_gpkg_by_vpu.py)
+- Create gage list files and NGEN divide-gage crosswalk file for a new domain using this [script](https://github.com/NOAA-OWP/nwm-verf/blob/yliu_NGWPC-6986/utils/create_ngen_crosswalk_regionalization.py)
 
 ## Testing
 

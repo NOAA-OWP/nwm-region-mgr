@@ -45,8 +45,8 @@ parameter sets beyond calibrated catchments. This tool depends on data from a ca
 run of NextGen, as well as various catchment attributes characterizing local climate, topography, landcover, 
 soil, geology, and anthropogenic influence. Once the tool has been run, the optimal formulation and 
 parameter sets may be used by
-the [Model Setup Workflow Manager](https://github.com/NGWPC/nwm-msw-mgr) to set up NextGen simulation runs 
-and performance may be assessed with [NWM Evaluation Manager](https://github.com/NGWPC/nwm-verf).
+the [Model Setup Workflow Manager](https://github.com/NOAA-OWP/nwm-msw-mgr) to set up NextGen simulation runs 
+and performance may be assessed with [NWM Evaluation Manager](https://github.com/NOAA-OWP/nwm-verf).
 
 ----
 
