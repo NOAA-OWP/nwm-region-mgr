@@ -1,0 +1,7 @@
+path,comment
+inputs/region,inputs for the regionalization step
+inputs/ngen,inputs for the ngen simulation step
+inputs/eval,inputs for the evaluation step
+outputs/region,outputs from the regionalization step
+outputs/ngen,outputs from the ngen simulation step
+outputs/eval,outputs from the evaluation step

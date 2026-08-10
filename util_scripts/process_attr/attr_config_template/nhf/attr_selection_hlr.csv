@@ -1,0 +1,13 @@
+select,attr_name,description
+1,AQPERMNEW,"Mean aquifer permeability (cm/hour) of soils (STATSGO) within catchment."
+1,SLOPE,"Mean slope (%) of catchment."
+1,TAVE,"Mean annual temperature (°C) within catchment."
+1,PPT,"Mean annual precipitation (mm) within catchment."
+1,PET,"Mean annual potential evapotranspiration (mm) within catchment."
+1,PMPE,"Mean annual precipitation minus potential evapotranspiration (mm) within catchment."
+1,SAND,"Mean percentage of sand in the soil (STATSGO) within catchment."
+1,MINELE,"Minimum elevation (m) within catchment."
+1,RELIEF,"Relief (m) of catchment."
+1,PFLATTOT,"Total percentage of flatland within catchment."
+1,PFLATLOW,"Percentage of flatland in the lowland area within catchment."
+1,PFLATUP,"Percentage of flatland in the upland area within catchment."

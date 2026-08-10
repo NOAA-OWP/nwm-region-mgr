@@ -1,25 +1,69 @@
 sample_file_path|inputs/region/attr_datasets/ngen/attr_ngen_conus.parquet
 title|File containing NGEN attribute data for all catchments in a NWM domain (e.g., CONUS).
-divide_id|Unique identifier for each catchment.
-dksat|NWM parameter: saturated hydraulic conductivity
-psisat|NWM parameter: saturated capillary head
-smcmax|NWM parameter: saturated soil moisture content
-smcwlt|NWM parameter: wilting point soil moisture content
-bexp|NWM parameter: beta exponent on Clapp-Hornberger (1978) soil water relations
-cwpvt|NWM parameter: Canopy wind parameter for canopy wind profile formulation
-mfsno|NWM parameter: Melt factor for snow depletion curve
-mp|NWM parameter: Slope of Ball-Berry conductance relationship
-refkdt|NWM parameter: Soil infiltration parameter
-slope_1km|NWM parameter: Coeffecient controlling the drainage out of the soil bottom (0=no-flow)
-vcmx25|NWM parameter: Maximum carboxylation at 25 degC
-Zmax|NWM parameter: maximum storage in the conceptual reservoir
-Expon|NWM parameter: exponent for nonlinear ground water reservoir (1.0 for linear reservoir)
-centroid_x|centroid_x of catchment
-centroid_y|centroid_y of catchment
-impervious|percentage of impervious area
-elevation|mean elevation catchment
-slope|mean slope of catchment
-aspect|mean aspect of catchment
-ISLTYP|dominant soil type
-IVGTYP|dominant vegetation class
-vpuid|VPU ID of catchment
+div_id|Unique identifier for each catchment.
+area_sqkm|area in square kilometers
+elevation_mean|mean elevation
+slope250m_mean|mean slope calculated from 250m DEM
+aspect_circmean|circular mean of aspect
+lat|latitude
+lon|longitude
+glacier_percent|percentage of glacier area
+bexp_mode|NWM parameter: beta exponent on Clapp-Hornberger (1978) soil water relations (mode)
+isltyp_mode|NWM parameter: soil type (mode)
+ivgtyp_mode|NWM parameter: vegetation type (mode)
+dksat_geomean|NWM parameter: saturated hydraulic conductivity (geometric mean)
+psisat_geomean|NWM parameter: saturated capillary head (geometric mean)
+cwpvt_mean|NWM parameter: canopy wind parameter for canopy wind profile formulation (mean)
+mp_mean|NWM parameter: Slope of Ball-Berry conductance relationship (mean)
+mfsno_mean|NWM parameter: minimum snow water equivalent (mean)
+quartz_mean|NWM parameter: quartz content (mean)
+refkdt_mean|NWM parameter: Soil infiltration parameter (mean)
+slope1km_mean|NWM parameter: Coeffecient controlling the drainage out of the soil bottom (0=no-flow)
+smcmax_mean|NWM parameter: maximum soil moisture content (mean)
+smcwlt_mean|NWM parameter: soil moisture content at wilting point (mean)
+vcmx_mean|NWM parameter: Maximum carboxylation at 25 degC (mean)
+cgw|NWM parameter: channel groundwater storage
+expon|NWM parameter: exponent for nonlinear ground water reservoir (1.0 for linear reservoir)
+max_gw_storage|NWM parameter: maximum groundwater storage
+imperv_mean|NWM parameter: impervious area fraction (mean)
+a_xinanjiang_inflection_point_parameter|NWM parameter: Xinanjiang inflection point parameter
+b_xinanjiang_shape_parameter|NWM parameter: Xinanjiang shape parameter
+x_xinanjiang_shape_parameter|NWM parameter: Xinanjiang shape parameter
+twi_q25|25th percentile of topographic wetness index
+twi_q50|50th percentile of topographic wetness index
+twi_q75|75th percentile of topographic wetness index
+twi_q100|100th percentile of topographic wetness index
+twi_q10|10th percentile of topographic wetness index
+twi_q20|20th percentile of topographic wetness index
+twi_q30|30th percentile of topographic wetness index
+twi_q40|40th percentile of topographic wetness index
+twi_q60|60th percentile of topographic wetness index
+twi_q70|70th percentile of topographic wetness index
+twi_q80|80th percentile of topographic wetness index
+twi_q90|90th percentile of topographic wetness index
+lzfpm_mean|SAC-SMA parameter: Maximum lower zone free water, primary(mean)
+lzpk_mean|SAC-SMA parameter: Lower zone recession coefficient, primary (mean)
+lztwm_mean|SAC-SMA parameter: Maximum lower zone tension water (mean)
+rexp_mean|SAC-SMA parameter: Percolation equation exponent (mean)
+uzk_mean|SAC-SMA parameter: Upper zone recession coefficient (mean)
+zperc_mean|SAC-SMA parameter: Minimum percolation rate coefficient (mean)
+lzfsm_mean|SAC-SMA parameter: Maximum lower zone free water, secondary or supplemental (mean)
+lzsk_mean|SAC-SMA parameter: Lower zone recession coefficient, secondary or supplemental (mean)
+pfree_mean|SAC-SMA parameter: Percent percolating directly to lower zone free water (mean)
+uzfwm_mean|SAC-SMA parameter: Maximum upper zone free water (mean)
+uztwm_mean|SAC-SMA parameter: Maximum upper zone tension water (mean)
+mfmin_mean|SNOW-17 parameter: Minimum non-rain melt factor (mean)
+mfmax_mean|SNOW-17 parameter: Maximum non-rain melt factor (mean)
+uadj_mean|SNOW-17 parameter: Average wind function for rain on snow (mean)
+temp_delta_jan_mean|Temperature delta for January (mean)
+temp_delta_feb_mean|Temperature delta for February (mean)
+temp_delta_mar_mean|Temperature delta for March (mean)
+temp_delta_apr_mean|Temperature delta for April (mean)
+temp_delta_may_mean|Temperature delta for May (mean)
+temp_delta_jun_mean|Temperature delta for June (mean)
+temp_delta_jul_mean|Temperature delta for July (mean)
+temp_delta_aug_mean|Temperature delta for August (mean)
+temp_delta_sep_mean|Temperature delta for September (mean)
+temp_delta_oct_mean|Temperature delta for October (mean)
+temp_delta_nov_mean|Temperature delta for November (mean)
+temp_delta_dec_mean|Temperature delta for December (mean)

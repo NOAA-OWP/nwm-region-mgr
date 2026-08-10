@@ -3,10 +3,10 @@
 plot_utils.py
 
 Functions:
-- _plot_columns_by_dtype: Plot multiple columns of a GeoDataFrame based on their data types.
-- plot_spatial_map: Generate a spatial map plot for the given data.
-- plot_histogram: Generate histogram plot for the spatial or attribute distance between donors and receivers.
-- plot_point_map: Plot the spatial distribution of locations as points on a base layer map.
+    - _plot_columns_by_dtype: Plot multiple columns of a GeoDataFrame based on their data types.
+    - plot_spatial_map: Generate a spatial map plot for the given data.
+    - plot_histogram: Generate histogram plot for the spatial or attribute distance between donors and receivers.
+    - plot_point_map: Plot the spatial distribution of locations as points on a base layer map.
 
 """
 
@@ -15,13 +15,14 @@ import math
 from itertools import cycle, islice
 
 import geopandas as gpd
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 
-# from matplotlib.lines import Line2D
-from shapely.ops import unary_union
+from nwm_region_mgr.utils.hydrofabric_utils import dissolve_polygons
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +35,6 @@ def _plot_columns_by_dtype(
     cmap_numeric: str = "viridis",
     cmap_categorical: str = "Set3",
     figsize=(10, 6),
-    ncols: int = 3,
     antialiased: bool = False,
 ):
     """Plot multiple GeoDataFrame columns in subplots based on data type.
@@ -47,91 +47,139 @@ def _plot_columns_by_dtype(
         cmap_numeric: colormap for numeric values
         cmap_categorical: colormap for categorical values
         figsize: figure size
-        ncols: number of columns in the subplot grid (default is 3)
         antialiased: whether to disable antialiasing for the plots
 
     """
     n = len(columns)
+    ncols = min(4, n)
     nrows = math.ceil(n / ncols)
 
     fig, axes = plt.subplots(nrows=nrows, ncols=ncols, figsize=figsize)
-    axes = np.array(axes).reshape(-1)  # Flatten in case of 2D grid
+    axes = np.atleast_1d(axes).flatten()
 
-    # get the outer boundary of the GeoDataFrame
-    combined_polygon = unary_union(gdf.geometry)
+    # outer boundary
+    combined_polygon = dissolve_polygons(gdf, remove_holes=True)
     boundary = combined_polygon.boundary
 
     for i, column in enumerate(columns):
         ax = axes[i]
         dtype = gdf[column].dtype
 
-        # Copy gdf to avoid modifying original
         gdf_plot = gdf.copy()
         if fillna_value is not None:
             gdf_plot[column] = gdf_plot[column].fillna(fillna_value)
 
+        gdf_plot = gdf_plot[~gdf_plot[column].isna()]
+        if gdf_plot.empty:
+            ax.axis("off")
+            continue
+
+        # numeric columns
         if pd.api.types.is_numeric_dtype(dtype):
-            if num_bins is not None:
-                gdf_plot["__binned__"] = pd.cut(gdf_plot[column], bins=num_bins)
+            values = gdf_plot[column]
+
+            if num_bins is not None:  # Treat as categorical (binned)
+                values = pd.cut(values, bins=num_bins)
+                gdf_plot["__binned__"] = values
                 gdf_plot.plot(
                     ax=ax,
                     column="__binned__",
                     cmap=cmap_numeric,
-                    legend=True,
-                    edgecolor="none",
-                    linewidth=0,
-                )
-            else:
-                gdf_plot.plot(
-                    ax=ax,
-                    column=column,
-                    cmap=cmap_numeric,
-                    legend=True,
                     edgecolor="none",
                     linewidth=0,
                 )
 
-        elif pd.api.types.is_categorical_dtype(dtype) or pd.api.types.is_object_dtype(
+                legend = ax.get_legend()
+                if legend:
+                    labels = [t.get_text() for t in legend.get_texts()]
+                    ncol_legend = min(3, max(1, len(labels) // 2))
+
+                    legend.set_bbox_to_anchor((0.5, -0.18))
+                    legend.set_loc("upper center")
+                    legend.set_ncol(ncol_legend)
+                    legend.set_frame_on(True)
+
+            else:
+                vmin, vmax = values.min(), values.max()
+                norm = mpl.colors.Normalize(vmin=vmin, vmax=vmax)
+                cmap = plt.get_cmap(cmap_numeric)
+
+                gdf_plot.plot(
+                    ax=ax,
+                    column=column,
+                    cmap=cmap,
+                    edgecolor="none",
+                    linewidth=0,
+                )
+
+                divider = make_axes_locatable(ax)
+                cax = divider.append_axes("bottom", size="5%", pad=0.4)
+
+                sm = mpl.cm.ScalarMappable(norm=norm, cmap=cmap)
+                sm.set_array([])
+
+                fig.colorbar(sm, cax=cax, orientation="horizontal")
+
+        # categorical columns
+        elif pd.api.types.is_object_dtype(dtype) or pd.api.types.is_categorical_dtype(
             dtype
         ):
             gdf_plot[column] = gdf_plot[column].astype("category")
+
             gdf_plot.plot(
                 ax=ax,
                 column=column,
                 cmap=cmap_categorical,
-                legend=True,
                 edgecolor="none",
                 linewidth=0,
+                legend=True,
             )
+
+            legend = ax.get_legend()
+            if legend:
+                labels = [t.get_text() for t in legend.get_texts()]
+
+                # dynamic column layout
+                if len(labels) <= 3:
+                    ncol_legend = len(labels)
+                elif len(labels) <= 10:
+                    ncol_legend = 4
+                else:
+                    ncol_legend = 5
+
+                legend.set_bbox_to_anchor((0.5, -0.18))
+                legend.set_loc("upper center")
+                legend.set_ncols(ncol_legend)
+                legend.set_frame_on(True)
+
+                # shrink font if too many categories
+                if len(labels) > 10:
+                    for text in legend.get_texts():
+                        text.set_fontsize(8)
+
         else:
             ax.set_title(f"Unsupported dtype: {column}")
             ax.axis("off")
             continue
 
-        # Even when edgecolor="none" and linewidth=0, antialiasing can cause matplotlib to blend edges
-        # between adjacent polygons, resulting in faint grey or black lines. Disable antialiasing if needed.
+        # antialiasing fix
         for coll in ax.collections:
             coll.set_antialiased(antialiased)
 
-        # plot outer boundary
+        # boundary overlay
         gpd.GeoSeries(boundary).plot(ax=ax, color="black", linewidth=0.5)
 
         ax.set_title(column)
         ax.set_axis_off()
 
-        # make sure legend is outside the plot if it exists
-        legend = ax.get_legend()
-        if legend is not None:
-            # legend.set_bbox_to_anchor((1.05, 1))
-            legend.set_bbox_to_anchor((0.5, -0.20))  # bottom center
-            legend.set_loc("lower center")
-            legend.set_frame_on(True)
-
-    # Turn off any unused subplots
+    # turn off unused axes
     for j in range(i + 1, len(axes)):
         axes[j].axis("off")
 
-    return fig, axes[: i + 1]  # Return only used axes
+    # leave space for bottom elements
+    plt.tight_layout(rect=[0, 0.12, 1, 0.95])
+
+    return fig, axes[: i + 1]
 
 
 def plot_spatial_map(gdf: gpd.GeoDataFrame, d1: dict) -> None:
@@ -144,32 +192,17 @@ def plot_spatial_map(gdf: gpd.GeoDataFrame, d1: dict) -> None:
             Information needed for creating the plot
 
     """
-    # check if the required column exists, allow case insensitivity
-    cols_exist = [c for c in d1["columns"] if c.lower() in gdf.columns.str.lower()]
-    cols_missing = set(d1["columns"]) - set(gdf.columns)
-    if not cols_exist:
-        logger.warning(
-            f"Columns {cols_missing} not found in gdf. Cannot create spatial map plot."
-        )
-        return
-    if cols_missing:
-        logger.warning(
-            f"Excluding missing columns {cols_missing} from spatial map plot."
-        )
-
     _, ax = plt.subplots(figsize=(8, 6))
 
     # create spatial map
     fig, axes = _plot_columns_by_dtype(
         gdf,
-        columns=cols_exist,
+        columns=d1["columns"],
         fillna_value=d1.get("fillna_value", None),
         num_bins=d1.get("num_bins", None),
         cmap_numeric=d1.get("cmap_numeric", "viridis"),
         cmap_categorical=d1.get("cmap_categorical", "Set3"),
-        ncols=d1.get("ncols", 3),
     )
-    # gdf.plot(ax=ax, column=d1["column"], cmap="viridis", legend=True, edgecolor=None)
 
     d1["title"] = d1.get("title", f"Spatial Map of {d1['var_str']}: VPU {d1['vpu']}")
     if algorithm := d1.get("algorithm", None):
@@ -182,7 +215,7 @@ def plot_spatial_map(gdf: gpd.GeoDataFrame, d1: dict) -> None:
     # save the figure
     if d1.get("outfile") is not None:
         plt.savefig(d1["outfile"], bbox_inches="tight")
-        plt.close()
+        plt.close(fig)
         logger.info(
             f"Spatial map of {d1['var_str']} for VPU {d1['vpu']} saved to {d1['outfile']}"
         )
@@ -199,7 +232,6 @@ def plot_histogram(data: pd.DataFrame, d1: dict) -> None:
         d1: dict
             information needed for creating the plot, including:
             - columns: list of column names to plot
-            - ncols: number of columns in the subplot grid (default is 3)
             - title: title of the plot
             - var_str: variable string for the plot
             - vpu: VPU identifier
@@ -211,37 +243,14 @@ def plot_histogram(data: pd.DataFrame, d1: dict) -> None:
         logger.warning("No valid columns specified to plot for histogram.")
         return
 
-    # filter to numeric columns only
-    numeric_columns = data.select_dtypes(include=[np.number]).columns.tolist()
-    if not numeric_columns:
-        logger.warning("No numeric columns found in the dataframe to plot histograms.")
-        return
-
-    if not set(columns).issubset(set(numeric_columns)):
-        logger.warning(
-            f"Some specified columns {set(columns) - set(numeric_columns)} are not numeric. "
-            "Skipping these columns for histogram plots."
-        )
-        columns = [col for col in columns if col in numeric_columns]
-
-    # Filter to columns that exist in data, allow case insensitivity
-    valid_columns = [col for col in columns if col.lower() in data.columns.str.lower()]
-    if not valid_columns:
-        raise ValueError("None of the specified columns exist in the dataframe.")
-    missing_columns = set(columns) - set(valid_columns)
-    if missing_columns:
-        logger.warning(
-            f"Columns {missing_columns} not found in data. Only plotting valid columns: {valid_columns}"
-        )
-
-    n = len(valid_columns)
-    ncols = d1.get("ncols", 3)
+    n = len(columns)
+    ncols = min(2, n)  # cap at 2 columns, but don’t exceed n
     nrows = math.ceil(n / ncols)
 
     fig, axes = plt.subplots(nrows=nrows, ncols=ncols, figsize=(6 * ncols, 4 * nrows))
-    axes = axes.flatten()  # Flatten in case of single row
+    axes = np.atleast_1d(axes).flatten()  # always normalize to an array
 
-    for i, col in enumerate(valid_columns):
+    for i, col in enumerate(columns):
         sns.histplot(
             data[col],
             ax=axes[i],
@@ -255,7 +264,7 @@ def plot_histogram(data: pd.DataFrame, d1: dict) -> None:
         axes[i].set_title(f"{col}")
 
     # Hide any unused subplots
-    for j in range(len(valid_columns), len(axes)):
+    for j in range(len(columns), len(axes)):
         axes[j].set_visible(False)
 
     title = d1.get("title", f"Histograms of {d1['var_str']}: VPU {d1['vpu']}")
@@ -269,7 +278,7 @@ def plot_histogram(data: pd.DataFrame, d1: dict) -> None:
     # save the figure
     if d1.get("outfile") is not None:
         plt.savefig(d1["outfile"], bbox_inches="tight")
-        plt.close()
+        plt.close(fig)
         logger.info(
             f"Histogram of {d1['var_str']} for VPU {d1['vpu']} saved to {d1['outfile']}"
         )
@@ -277,7 +286,7 @@ def plot_histogram(data: pd.DataFrame, d1: dict) -> None:
         logger.warning("No output file specified for histogram plot. Skipping save.")
 
 
-# NOT USED YET (for future use)
+# NOT USED YET (keep for future use)
 def plot_point_map(
     data: pd.DataFrame,
     d1: dict,

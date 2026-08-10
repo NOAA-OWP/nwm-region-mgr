@@ -37,16 +37,16 @@ class FormulationGeneralSettings(BaseGeneralConfig):
 
     huc12_hydrofabric_file: Union[str, Path] | None = Field(
         description="Path to HUC12 hydrofabric file containing HUC12 polygons for spatial discretization.",
-        examples="NationalWBDSnapshot.gdb",
+        examples="{static_data_dir}/region/NHDPlusV21/NHDPlusNationalData/NationalWBDSnapshot.gdb",
         default=None,
     )
 
     divide_huc12_cwt_file: str | None = Field(
         description=(
             "Path to crosswalk file between HUC12 basins and NextGen catchments, "
-            "with columns 'divide_id' and 'huc_12'."
+            "with columns 'div_id' and 'huc_12'."
         ),
-        examples="cwt_divide_huc12_{domain}.csv",
+        examples="{static_data_dir}/region/cwt_divide_huc12/cwt_divide_huc12_{domain}.csv",
         default=None,
     )
 
@@ -66,7 +66,7 @@ class FormulationGeneralSettings(BaseGeneralConfig):
             "If 'all', all formulations are included."
         ),
         examples=[
-            "noah-owp-modular cfe-s t-route",
+            "noah-owp-modular cfe-x t-route",
             "noah-owp-modular ueb cfe-x t-route",
         ],
         default=None,
@@ -131,10 +131,11 @@ class FormulationSpatialUnitConfig(BaseModel):
     huc_level: str = Field(
         description=(
             "USGS HUC level used for spatial discretization (e.g., 'huc8'). "
+            "Valid options are HUC2, HUC4, HUC6, HUC8, HUC10, and HUC12."
             "A single formulation is selected per spatial unit given the spatial discretization level. "
             "Accepted formats: 'huc8', 'HUC8', 'huc-8'."
         ),
-        examples=["huc2", "huc4", "huc6", "huc8", "huc10", "huc12"],
+        examples="huc8",
         default="huc8",
     )
 
@@ -234,8 +235,8 @@ class MetricEvalPeriod(BaseModel):
 
     value: str = Field(
         description="Value of the evaluation period to filter the donor stats file.",
-        examples=["valid", "calib", "full"],
-        default="full",
+        examples="valid",
+        default="valid",
     )
 
 
@@ -251,7 +252,7 @@ class FormulationSummaryScoreConfig(BaseModel):
     metrics: Dict[str, MetricConfig] = Field(
         description=(
             "Dictionary of metrics used in the summary score, keyed by metric name. "
-            "Metric names must match columns in the calibration/validation stats file. Weights must sum to 1.0. "
+            "Metric names must match columns in the calibration/validation stats file (case sensitive). Weights must sum to 1.0. "
             "Refer to schema of MetricConfig for individual metric settings."
         ),
         examples={
@@ -332,13 +333,16 @@ class FormulationCostConfig(BaseModel):
 
     file: str | None = Field(
         description="Path to CSV file with formulation costs. If provided, costs will be read from this file.",
-        examples="formulation_costs_secs_per_catchment.csv",
+        examples="{static_data_dir}/region/formulation_costs_secs_per_catchment.csv",
         default=None,
     )
 
     costs: Dict[str, float] | None = Field(
         description="Dictionary of formulation costs, keyed by formulation name. If `file` is provided, this is ignored.",
-        examples={"noah-owp-modular ueb cfe-x t-route": 10},
+        examples={
+            "noah-owp-modular ueb cfe-x t-route": 10,
+            "noah-owp-modular snow-17 sac-sma t-route": 5,
+        },
         default=None,
     )
 

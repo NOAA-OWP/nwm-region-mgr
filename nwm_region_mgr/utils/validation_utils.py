@@ -3,9 +3,9 @@
 validation_utils.py
 
 Functions:
-- check_columns_dataframe: Check if the required columns are present in a DataFrame (CSV or Parquet).
-- check_columns_hydrofabric: Check if the required fields are present in a hydrofabric file (GeoPackage or Shapefile).
-- check_options: Check if the provided option is valid against a list of valid options.
+    - check_columns_dataframe: Check if the required columns are present in a DataFrame (CSV or Parquet).
+    - check_columns_hydrofabric: Check if the required fields are present in a hydrofabric file (GeoPackage or Shapefile).
+    - check_options: Check if the provided option is valid against a list of valid options.
 
 """
 
@@ -20,12 +20,15 @@ import pyarrow.parquet as pq
 logger = logging.getLogger(__name__)
 
 
-def check_columns_dataframe(file: Path | str, columns: Set[str]):
+def check_columns_dataframe(
+    file: Path | str, columns: Set[str], case_sensitive: bool = True
+):
     """Check if the required columns are present in the file.
 
     Args:
         file: Path to the CSV or Parquet file.
         columns: Set of required column names.
+        case_sensitive: Whether to check column names in a case-sensitive manner (default: True).
 
     Raises:
         ValueError: If any of the required columns are missing in the file.
@@ -43,13 +46,12 @@ def check_columns_dataframe(file: Path | str, columns: Set[str]):
     if suffix == ".csv":
         # Read full DataFrame with minimal memory usage
         df = pd.read_csv(file)
-        df.columns = df.columns.str.strip().str.lower()
-        columns_present = list(df.columns)
+        columns_present = [col.strip() for col in df.columns]
         is_empty = df.empty
 
     elif suffix == ".parquet":
         pf = pq.ParquetFile(file)
-        columns_present = [col.strip().lower() for col in pf.schema.names]
+        columns_present = [col.strip() for col in pf.schema.names]
         is_empty = pf.metadata.num_rows == 0  # More efficient than loading into pandas
 
     else:
@@ -63,18 +65,31 @@ def check_columns_dataframe(file: Path | str, columns: Set[str]):
         logger.error(msg)
         raise ValueError(msg)
 
-    # Check for missing columns (case insensitive)
-    missing_cols = {col.lower() for col in columns} - {
-        col.lower() for col in columns_present
-    }
+    # Normalize only if case-insensitive
+    if case_sensitive:
+        required = {col.strip() for col in columns}
+        present = set(columns_present)
+    else:
+        required = {col.strip().lower() for col in columns}
+        present = {col.lower() for col in columns_present}
+
+    # check for missing columns
+    missing_cols = required - present
     if missing_cols:
-        msg = f"Missing columns (case insensitive) in {file}: {missing_cols}. Available columns: {columns_present}"
+        mode = "case sensitive" if case_sensitive else "case insensitive"
+        msg = (
+            f"Missing columns ({mode}) in {file}: {missing_cols}. "
+            f"Available columns: {columns_present}"
+        )
         logger.error(msg)
         raise ValueError(msg)
 
 
 def check_columns_hydrofabric(
-    hydro_file: str | Path, required_fields: list[str], layer_name: str = None
+    hydro_file: str | Path,
+    required_fields: list[str],
+    layer_name: str = None,
+    case_sensitive: bool = True,
 ) -> str:
     """Check if the required fields are present in the hydrofabric file.
 
@@ -82,6 +97,7 @@ def check_columns_hydrofabric(
         hydro_file: Path to the hydrofabric file (GeoPackage or Shapefile).
         required_fields: List of required fields to check.
         layer_name: Optional layer name for GeoPackage or Geodatabase files.
+        case_sensitive: Whether to check field names in a case-sensitive manner (default: True).
 
     Returns:
         str: The layer name used for the hydrofabric file.
@@ -114,20 +130,29 @@ def check_columns_hydrofabric(
     # Open with or without layer
     open_kwargs = {"layer": layer_name} if use_layer else {}
 
+    def _normalize(value: str, case_sensitive: bool) -> str:
+        return value if case_sensitive else value.lower()
+
     with fiona.open(hydro_file, **open_kwargs) as src:
-        schema_fields = {field.lower() for field in src.schema["properties"]}
+        raw_fields = list(src.schema["properties"].keys())
         has_geometry = src.schema.get("geometry") is not None
+
+        schema_fields = {_normalize(f, case_sensitive) for f in raw_fields}
 
         missing = []
         for field in required_fields:
-            if field.lower() == "geometry":
+            norm_field = _normalize(field, case_sensitive)
+
+            # Special handling for geometry
+            if norm_field == _normalize("geometry", case_sensitive):
                 if not has_geometry:
-                    missing.append("geometry")
-            elif field not in schema_fields:
+                    missing.append(field)
+            elif norm_field not in schema_fields:
                 missing.append(field)
 
     if missing:
-        msg = f"Missing required fields in {hydro_file}: {missing}. Available fields: {schema_fields}"
+        mode = "case sensitive" if case_sensitive else "case insensitive"
+        msg = f"Missing required fields ({mode}) in {hydro_file}: {missing}. Available fields: {schema_fields}"
         logger.error(msg)
         raise ValueError(msg)
 

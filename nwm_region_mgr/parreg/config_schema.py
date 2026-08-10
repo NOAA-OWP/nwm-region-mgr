@@ -32,14 +32,8 @@ logger = logging.getLogger(__name__)
 class GeneralConfig(BaseGeneralConfig):
     """General configuration settings specific to parameter regionalization."""
 
-    n_procs: int = Field(
-        description="Number of processors to use for parallel processing. Set to -1 to use all available processors.",
-        default=-1,
-        examples=-1,
-    )
-
-    attr_dataset_list: List[Literal["ngen", "hlr", "streamcat"]] = Field(
-        description="List of attribute dataset names to use. Valid options include 'ngen', 'hlr', 'streamcat'.",
+    attr_dataset_list: List[Literal["ngen", "hlr", "streamcat", "hydroatlas"]] = Field(
+        description="List of attribute dataset names to use. Valid options include 'ngen', 'hlr', 'streamcat', 'hydroatlas'.",
         examples=["ngen", "streamcat"],
         default=["ngen"],
     )
@@ -52,12 +46,12 @@ class GeneralConfig(BaseGeneralConfig):
         default=["gower"],
     )
 
-    manual_pairings_file: Path | str | None = Field(
+    manual_pairings_file: Path | str | Dict[str, Path] | Dict[str, str] | None = Field(
         description=(
             "Path to the manual pairings file. If provided, this file will be used to specify "
             "manual donor-receiver pairings, overriding the algorithmic selections."
         ),
-        examples="pairs_kmeans_conus_vpu09.parquet",
+        examples="{static_data_dir}/region/manual_pairings/manual_pairs_{vpu_list}.csv",
         default=None,
     )
 
@@ -129,8 +123,9 @@ class DonorConfig(BaseModel):
 
     metric_threshold: Dict[str, MetricThreshold] = Field(
         description=(
-            "Dictionary of metric thresholds to be used for screening donors. Each key is a metric name, "
-            "and the value is a MetricThreshold object specifying the min, max, and absolute settings. "
+            "Dictionary of metric thresholds to be used for screening donors. Each key is a metric name, and "
+            "metric names must match columns in the calibration/validation stats file (case sensitive). "
+            "The value is a MetricThreshold object specifying the min, max, and absolute settings. "
             "Refer to schema of MetricThreshold for details."
         ),
         examples={
@@ -147,32 +142,30 @@ class DonorConfig(BaseModel):
         init_donor_df: pd.DataFrame = None,
     ) -> list:
         """Screen donors based on the metric thresholds and evaluation period."""
-        divide_id_name = getattr(config.general.id_col, "divide", "divide_id")
-        gage_id_name = getattr(config.general.id_col, "gage", "gage_id")
+        div_col = getattr(config.general.id_col, "divide", "div_id")
+        gage_col = getattr(config.general.id_col, "gage", "gage_id")
 
         # initial donors
-        donors = [
-            d for d in init_donor_df[gage_id_name].unique().tolist() if d in donors0
-        ]
+        donors = [d for d in init_donor_df[gage_col].unique().tolist() if d in donors0]
         donor_cats = (
-            init_donor_df.loc[init_donor_df[gage_id_name].isin(donors), divide_id_name]
+            init_donor_df.loc[init_donor_df[gage_col].isin(donors), div_col]
             .unique()
             .tolist()
         )
 
         # read the donor stats file
         stats_file = config.general.calval_stats_file
-        df = read_table(stats_file, dtype={gage_id_name: str})
+        df = read_table(stats_file, dtype={gage_col: str})
 
         # filter based on initial donors
-        df = df[df[gage_id_name].isin(donors)]
+        df = df[df[gage_col].isin(donors)]
         if df.empty:
             logger.warning(
                 f"No matching gages found in {stats_file} for the initial donors. Returning the initial list."
             )
-            return {gage_id_name: donors, divide_id_name: donor_cats}
+            return {gage_col: donors, div_col: donor_cats}
         else:
-            gages_stat = df[gage_id_name].unique().tolist()
+            gages_stat = df[gage_col].unique().tolist()
             gages_missing = [g for g in donors if g not in gages_stat]
             if gages_missing:
                 logger.warning(
@@ -198,18 +191,30 @@ class DonorConfig(BaseModel):
                 f"No evaluation period provided. Using all periods in {stats_file}."
             )
 
+        # build mapping of lower-case column names to actual column names to allow case-insensitive matching of metric names
+        col_map = {c.lower(): c for c in df.columns}
+
         # filter based on metric thresholds
         for col, threshold in self.metric_threshold.items():
-            if threshold.absolute:
-                df[col] = df[col].abs()
-            if threshold.min is not None:
-                df = df[df[col] >= threshold.min]
-            if threshold.max is not None:
-                df = df[df[col] <= threshold.max]
+            col_key = col.lower()
 
-        donors = df[gage_id_name].unique().tolist()
+            if col_key not in col_map:
+                raise KeyError(
+                    f"Column '{col}' not found in {stats_file} (case-insensitive match failed)."
+                )
+
+            actual_col = col_map[col_key]
+
+            if threshold.absolute:
+                df[actual_col] = df[actual_col].abs()
+            if threshold.min is not None:
+                df = df[df[actual_col] >= threshold.min]
+            if threshold.max is not None:
+                df = df[df[actual_col] <= threshold.max]
+
+        donors = df[gage_col].unique().tolist()
         donor_cats = (
-            init_donor_df[init_donor_df[gage_id_name].isin(donors)][divide_id_name]
+            init_donor_df[init_donor_df[gage_col].isin(donors)][div_col]
             .unique()
             .tolist()
         )
@@ -224,7 +229,7 @@ class DonorConfig(BaseModel):
                 "No donors left after filtering. Check the metric thresholds and evaluation period."
             )
 
-        return {gage_id_name: donors, divide_id_name: donor_cats}
+        return {gage_col: donors, div_col: donor_cats}
 
 
 class AttrDatasetConfig(BaseModel):
@@ -272,25 +277,14 @@ class AttrDatasetConfig(BaseModel):
         """Private method to load the list of selected attributes."""
         # determine list of attributes to use from either attr_list or attr_select_file
         # if both are provided, attr_list takes priority
-        if self.attr_list:
-            # make sure attr_list is valid
-            attrs1 = [
-                x
-                for x in self.attr_list
-                if x not in pq.ParquetFile(self.attr_data_file).schema.names
-            ]
-            if attrs1:
-                msg = f"These attributes {attrs1} are not found in {self.attr_data_file}. Please check the configuration."
-                logger.error(msg)
-                raise ValueError(msg)
-        else:
+        if not self.attr_list:
             attr_select_path = Path(self.attr_select_file)
             if not attr_select_path.exists():
                 raise FileNotFoundError(
                     f"Select file not found: {self.attr_select_file}"
                 )
 
-            df_attrs = pd.read_csv(attr_select_path)
+            df_attrs = read_table(attr_select_path)
 
             if "select" not in df_attrs.columns or "attr_name" not in df_attrs.columns:
                 raise ValueError(
@@ -299,7 +293,30 @@ class AttrDatasetConfig(BaseModel):
 
             self.attr_list = df_attrs[df_attrs["select"] == 1]["attr_name"].to_list()
 
-    def get_attr_data(self, id_name: str = "divide_id") -> pd.DataFrame:
+        # check if attrs in attr_list are present in the attr_data_file
+        attrs1 = [
+            x
+            for x in self.attr_list
+            if x not in pq.ParquetFile(self.attr_data_file).schema.names
+        ]
+        if attrs1:
+            msg = f"The following attributes are not found in {self.attr_data_file} and will be ignored: {attrs1}"
+            logger.warning(msg)
+
+            self.attr_list = [x for x in self.attr_list if x not in attrs1]
+
+        # if final attr_list is empty after filtering, raise an error
+        if not self.attr_list:
+            msg = (
+                "No valid attributes found based on the following configurations:\n"
+                f"attr_list: {self.attr_list}\n"
+                f"attr_select_file: {self.attr_select_file}\n"
+                f"attr_data_file: {self.attr_data_file}\n"
+            )
+            logger.error(msg)
+            raise ValueError(msg)
+
+    def get_attr_data(self, id_name: str = "div_id") -> pd.DataFrame:
         """Load attribute data filtered by selected attributes."""
         self._get_selected_attrs()
 
@@ -311,14 +328,7 @@ class AttrDatasetConfig(BaseModel):
             raise FileNotFoundError(
                 f"Attribute data file not found: {self.attr_data_file}"
             )
-
-        suffix = attr_data_path.suffix.lower()
-        if suffix == ".csv":
-            df_data = pd.read_csv(attr_data_path)
-        elif suffix == ".parquet":
-            df_data = pd.read_parquet(attr_data_path)
-        else:
-            raise ValueError(f"Unsupported file format: {suffix}")
+        df_data = read_table(attr_data_path)
 
         missing_cols = set(self.attr_list) - set(df_data.columns)
         if missing_cols:
@@ -337,8 +347,8 @@ class AvailableAttrsConfig(BaseModel):
         ),
         examples={
             "attr_list": None,
-            "attr_select_file": "{base_dir}/inputs/attr_config/attr_selection_ngen.csv",
-            "attr_data_file": "{base_dir}/inputs/attr_datasets/ngen/attr_ngen_{domain}.parquet",
+            "attr_select_file": "{static_data_dir}/inputs/attr_config/attr_selection_ngen.csv",
+            "attr_data_file": "{static_data_dir}/inputs/attr_datasets/ngen/attr_ngen_{domain}.parquet",
             "base_attr_list": ["elevation", "slope", "aspect"],
         },
     )
@@ -350,8 +360,8 @@ class AvailableAttrsConfig(BaseModel):
         ),
         examples={
             "attr_list": None,
-            "attr_select_file": "{base_dir}/inputs/attr_config/attr_selection_hlr.csv",
-            "attr_data_file": "{base_dir}/inputs/attr_datasets/hlr/attr_hlr_{domain}.parquet",
+            "attr_select_file": "{static_data_dir}/inputs/attr_config/attr_selection_hlr.csv",
+            "attr_data_file": "{static_data_dir}/inputs/attr_datasets/hlr/attr_hlr_{domain}.parquet",
             "base_attr_list": ["PPT", "SAND"],
         },
     )
@@ -363,9 +373,22 @@ class AvailableAttrsConfig(BaseModel):
         ),
         examples={
             "attr_list": None,
-            "attr_select_file": "{base_dir}/inputs/attr_config/attr_selection_streamcat.csv",
-            "attr_data_file": "{base_dir}/inputs/attr_datasets/streamcat/attr_streamcat_{domain}.parquet",
+            "attr_select_file": "{static_data_dir}/inputs/attr_config/attr_selection_streamcat.csv",
+            "attr_data_file": "{static_data_dir}/inputs/attr_datasets/streamcat/attr_streamcat_{domain}.parquet",
             "base_attr_list": ["Precip_Minus_EVT", "Elev", "BFI"],
+        },
+    )
+
+    hydroatlas: AttrDatasetConfig = Field(
+        description=(
+            "Configuration for HydroATLAS attribute dataset "
+            "(https://www.hydrosheds.org/hydroatlas)."
+        ),
+        examples={
+            "attr_list": None,
+            "attr_select_file": "{static_data_dir}/inputs/attr_config/attr_selection_hydroatlas.csv",
+            "attr_data_file": "{static_data_dir}/inputs/attr_datasets/hydroatlas/attr_hydroatlas_{domain}.parquet",
+            "base_attr_list": ["ele_mt_sav", "dis_m3_pyr", "run_mm_syr", "pre_mm_syr"],
         },
     )
 
@@ -385,14 +408,14 @@ class SnowCoverConfig(BaseModel):
 
     snow_cover_file: Path | str | dict[str, Path | str] | None = Field(
         description="Path to the snow cover data file, or a dictionary with VPU as keys and file paths as values.",
-        examples="vpu{vpu_list}_snow_frac.parquet",
+        examples="{base_dir}/inputs/attr_datasets/hydroatlas/attr_hydroatlas_{domain}.parquet",
         default=None,
     )
 
     column: str | None = Field(
         description="Column name in the snow cover data file that contains the snow cover percentage.",
-        examples="snow_pc_hydroatlas",
-        default="snow_pc_hydroatlas",
+        examples="snw_pc_syr",
+        default="snw_pc_syr",
     )
 
     threshold: float | None = Field(
@@ -647,16 +670,14 @@ class AlgorithmConfig(BaseModel):
 
     hdbscan: HDBSCAN = Field(
         description=(
-            "Configurations for the clustering algorithm Hierarchical Density Based Spatial Clustering "
-            "of Applications with Noise (HDBSCAN)",
+            "Configurations for the clustering algorithm Hierarchical Density Based Spatial Clustering of Applications with Noise (HDBSCAN)",
         ),
         default_factory=HDBSCAN,
     )
 
     birch: Birch = Field(
         description=(
-            "Configurations for the clustering algorithm Balanced Iterative Reducing and "
-            "Clustering using Hierarchies (BIRCH)",
+            "Configurations for the clustering algorithm Balanced Iterative Reducing and Clustering using Hierarchies (BIRCH)",
         ),
         default_factory=Birch,
     )
@@ -730,7 +751,7 @@ class ParameterOutputConfig(BaseModel):
         description=(
             "Configuration for saving and plotting final attribute data used in regionalization. "
             "Note only selected attributes are saved, and attribute names are prefixed with "
-            "the name of the corresponding attribute source (e.g., 'Elev' in StreamCat becomes 'streamcat_Elev').",
+            "the name of the corresponding attribute source (e.g., 'Elev' in StreamCat becomes 'streamcat_Elev')."
         ),
         default_factory=BaseOutputConfig,
         examples={

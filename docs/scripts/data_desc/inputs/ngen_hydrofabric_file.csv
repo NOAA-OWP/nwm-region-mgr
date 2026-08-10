@@ -1,4 +1,4 @@
-sample_file_path|inputs/region/hydrofabric/vpu_divides/vpu_03S.gpkg
+sample_file_path|inputs/region/hydrofabric/gpkg_vpu/vpu_03S.gpkg
 title|NGEN Hydrofabric Catchment Divides for a VPU. Only the divides layer is used during regionalization.
 divide_id|Unique identifier for each catchment.
 toid|Identifier of the downstream feature (nexus) to which this catchment drains.

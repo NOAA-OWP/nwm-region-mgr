@@ -1,0 +1,41 @@
+hf_version: nhf  # options: nhf, v2.2
+domain: conus
+attr_dataset: streamcat # options: hlr, ngen, streamcat, hydroatlas
+attr_list: 
+overlap_threshold_max: 0.99
+overlap_threshold_min: 0.2
+base_dir: ~/data/region_input/{hf_version}
+gpkg_dir: ~/data/hydrofabric/gpkg_{hf_version}
+cwt_file: '{base_dir}/cwt_ngen_{attr_dataset}/cwt_ngen_{attr_dataset}_{domain}.parquet'
+attr_file: '{base_dir}/attr_datasets/{attr_dataset}/attr_{attr_dataset}_{domain}.parquet'
+process_cwt: false
+analyze_cwt: false
+process_attr: true
+
+hlr:
+  hf_file: ~/data/hlrshape/hlrus.shp
+  layer: hlrus
+  id_col: VALUE
+  attr_list_file: attr_config_template/nhf/attr_selection_hlr.csv
+
+ngen:
+  layer: divides
+  id_col: div_id   #div_id for nhf, divide_id for v2.2
+  vpu_col: vpuid #vpuid for nhf, vpu_id for v2.2
+  attr_list_file: attr_config_template/nhf/attr_selection_ngen.csv
+
+streamcat:
+  hf_file: '~/data/NHDPlusV21/NHD_by_vpu/NHDPlus{vpu}/NHDPlusCatchment/Catchment.shp'
+  layer: Catchment
+  id_col: FEATUREID
+  vpu_col: vpuid
+  attr_data_dir: ~/data/streamcat
+  attr_list_file: attr_config_template/nhf/attr_selection_streamcat.csv
+
+hydroatlas:
+  hf_file: '~/data/HydroATLAS/BasinATLAS_v10_shp/BasinATLAS_v10_lev12.shp'
+  layer: BasinATLAS_v10_lev12
+  id_col: PFAF_ID
+  attr_list_file: attr_config_template/nhf/attr_selection_hydroatlas.csv
+
+

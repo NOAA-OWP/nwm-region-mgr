@@ -3,8 +3,8 @@
 io_utils.py
 
 Functions:
-- save_data: Save data to disk in an appropriate format based on its type and file extension
-- read_table: Read a table from a file, supporting CSV and Parquet formats.
+    - save_data: Save data to disk in an appropriate format based on its type and file extension
+    - read_table: Read a table from a file, supporting CSV and Parquet formats.
 
 """
 
@@ -184,6 +184,7 @@ def read_table_safely(
                 escapechar=escapechar,
                 delimiter=delimiter,
                 dtype=dtype,
+                skipinitialspace=True,
             )
             logger.debug(
                 f"Successfully read file with encoding: {enc} and delimiter: '{delimiter}'"
@@ -200,13 +201,13 @@ def read_table_safely(
 
 
 def read_table(
-    file_path: Path | str, dtype: dict[str, str] | None = None, refresh: bool = False
+    file_path: Path | str, dtype: dict | None = None, refresh: bool = False
 ) -> pd.DataFrame:
     """Read a table from CSV, TSV, or Parquet with caching and optional automatic refresh.
 
     Args:
         file_path (Path | str): Path to the file to read. Supported formats are CSV, TSV, and Parquet.
-        dtype (dict[str, str] | None): Optional dictionary specifying the data types for specific columns.
+        dtype (dict | None): Optional dictionary specifying the data types for specific columns.
         refresh (bool): If True, forces re-reading the file even if it is cached. Default is False.
 
     Returns:
@@ -238,7 +239,7 @@ def read_table(
         raise ValueError(f"Unsupported file format: {suffix}")
 
     # remove leading/trailing whitespace from column names
-    df.columns = df.columns.str.strip()
+    df.columns = [col.strip() if isinstance(col, str) else col for col in df.columns]
 
     # Update cache and mtime
     _table_cache[file_path] = df

@@ -18,10 +18,8 @@ logger = logging.getLogger(__name__)
 def compute_pairwise_centroid_distances(
     group_a: gpd.GeoDataFrame,
     group_b: gpd.GeoDataFrame,
-    id_col_a: str = "divide_id",
-    id_col_b: str = "divide_id",
-    distance_threshold: float = None,
-    n_jobs: int | None = None,  # Use all available cores
+    id_col_a: str = "div_id",
+    id_col_b: str = "div_id",
 ) -> pd.DataFrame:
     """Compute pairwise distances between centroids of two GeoDataFrames.
 
@@ -32,13 +30,9 @@ def compute_pairwise_centroid_distances(
     group_b : gpd.GeoDataFrame
         The second GeoDataFrame containing geometries and IDs.
     id_col_a : str, optional
-        The name of the ID column in group_a. Default is "divide_id".
+        The name of the ID column in group_a. Default is "div_id".
     id_col_b : str, optional
-        The name of the ID column in group_b. Default is "divide_id".
-    distance_threshold : float, optional
-        If provided, only distances less than or equal to this value will be included in the output.
-    n_jobs : int, optional
-        The number of jobs to run in parallel. Default is None, which uses all available cores.
+        The name of the ID column in group_b. Default is "div_id".
 
     Returns
     -------
@@ -68,7 +62,12 @@ def compute_pairwise_centroid_distances(
         ds.append(np.sqrt(i).astype(np.uint16))
     data = np.concatenate(ds)
     del ds
-    data = pd.DataFrame(data, columns=b_ids, index=a_ids).T
+    data = pd.DataFrame(
+        data,
+        columns=[str(c) for c in b_ids],
+        index=[str(i) for i in a_ids],
+    ).T
+
     data = data.sort_index(axis=0)
     data = data.sort_index(axis=1)
     return data
@@ -100,34 +99,60 @@ def compute_distances_for_a(
 
 
 def get_valid_attrs(
-    recs0: list, recs1: list, df_attr0: pd.DataFrame, attrs: dict, config: dict
+    recs0: list,
+    recs1: list,
+    df_attr0: pd.DataFrame,
+    attrs: list,
+    config: dict,
+    id_col: str = "div_id",
 ) -> pd.DataFrame:
-    """Get the valid attributes to be processed based on the valid attributes of the first receiver."""
-    dt1 = df_attr0[~df_attr0["is_donor"]]
-    dt1 = dt1[dt1.divide_id.isin(recs0) & ~dt1.divide_id.isin(recs1)].iloc[0]
-    dt1 = dt1[~dt1.index.isin(config["non_attr_cols"])]
-    vars = config["non_attr_cols"] + dt1.index[~dt1.isna()].tolist()
-    df_attr = df_attr0[vars]
-    vars = [
-        value for value in vars if value in attrs
-    ]  # attrs included for current round
-    vars0 = [
-        value for value in attrs if value not in vars
-    ]  # attrs excluded for current round
+    """Get valid attributes based on the first eligible receiver."""
+    non_attr_cols = config.get("non_attr_cols", [])
 
-    if len(vars) > 0:
-        if len(vars0) > 0:
+    # Step 1: filter candidate receivers
+    mask = (
+        (~df_attr0["is_donor"])
+        & (df_attr0[id_col].isin(recs0))
+        & (~df_attr0[id_col].isin(recs1))
+    )
+    candidates = df_attr0.loc[mask]
+
+    if candidates.empty:
+        logger.warning("No matching receivers found.")
+        return pd.DataFrame()
+
+    # Step 2: take first valid receiver
+    row = candidates.iloc[0]
+
+    # Step 3: determine valid attributes (non-null)
+    valid_attr_cols = [
+        col for col in row.index if col not in non_attr_cols and pd.notna(row[col])
+    ]
+
+    # Step 4: combine with non-attribute columns
+    selected_cols = non_attr_cols + valid_attr_cols
+
+    # Step 5: filter to attributes used in this round
+    selected_attrs = [col for col in selected_cols if col in attrs]
+    excluded_attrs = [col for col in attrs if col not in selected_attrs]
+
+    if selected_attrs:
+        if excluded_attrs:
             logger.info(
-                "Excluding " + str(len(vars0)) + " attributes: " + ",".join(vars0)
+                f"Excluding {len(excluded_attrs)} attributes: {','.join(excluded_attrs)}"
             )
         else:
             logger.info("Using all attributes")
 
-    # ignore donors & receivers with NA attribute values
-    df_attr = df_attr.dropna(subset=[x for x in attrs if x not in vars0], inplace=False)
+    # Step 6: subset dataframe
+    df_attr = df_attr0[selected_cols]
 
-    if df_attr.shape[0] == 0:
-        logger.warning("No valid attributes found for the following receivers: ")
+    # Step 7: drop rows with NA in required attributes
+    required_attrs = [col for col in attrs if col not in excluded_attrs]
+    df_attr = df_attr.dropna(subset=required_attrs)
+
+    if df_attr.empty:
+        logger.warning("No valid attributes found after filtering.")
 
     return df_attr
 
@@ -165,31 +190,25 @@ def apply_pca(data0: pd.DataFrame, min_var: float = 0.8) -> pd.DataFrame:
 
 
 def apply_donor_constraints(
-    rec: str, donors: list, dists: pd.DataFrame, config: dict, df_attr: pd.DataFrame
+    rec: str,
+    donors: list,
+    dists: pd.DataFrame,
+    config: dict,
+    df_attr: pd.DataFrame,
+    id_col: str = "div_id",
 ) -> tuple:
     """Apply a few additional constraints to donors identified (e.g., via Gower's distance or other techniques)."""
     # 1. narrow down to donors with the same snowiness category
-    # snowy = df_attr.query("id == @rec & tag=='receiver'")['snowy']
-    # snowy1 = df_attr.query("id in @donors & tag=='donor'")['snowy']
-    # snowy = df_attr[df_attr["divide_id"] == rec]["snowy"].values[0]
-    # snowy1 = df_attr[df_attr["divide_id"].isin(donors)]["snowy"].values
-    # # ix1 = snowy1.isin(snowy)
-    # ix1 = np.isin(snowy1, snowy)
-    # if sum(ix1) > 0:
-    #     dists = np.array(dists)[ix1]
-    #     donors = np.array(donors)[ix1]
-
-    # 1. narrow down to donors with the same snowiness category
     # get receiver's snowiness
     try:
-        snowy = df_attr.loc[df_attr["divide_id"] == rec, "snowy"].values[0]
+        snowy = df_attr.loc[df_attr[id_col] == rec, "snowy"].values[0]
     except IndexError:
         raise ValueError(f"Receiver '{rec}' not found in attribute dataframe.")
 
     # Get donor snowiness in same order as donor list
     try:
         donor_index = pd.Index(donors)
-        donor_rows = df_attr.set_index("divide_id").loc[donor_index]
+        donor_rows = df_attr.set_index(id_col).loc[donor_index]
     except KeyError as e:
         raise ValueError(f"Some donors not found in attribute dataframe: {e}")
 
@@ -207,23 +226,6 @@ def apply_donor_constraints(
         dists = np.array(dists)[ix1]
         donors = np.array(donors)[ix1]
 
-    # 3. further narrow down based on screening attributes
-    # for att1 in pars['max_attr_diff'].keys():
-    #     ix1 = abs(np.array(df_attr[~df_attr['is_donor']][att1]) - \
-    #         np.array(df_attr[df_attr['is_donor']][att1])) \
-    #             <= pars['max_attr_diff'][att1]
-    #     if sum(ix1) > 0:
-    #         dists = np.array(dists)[ix1]
-    #         donors = np.array(donors)[ix1]
-
-    # 4. further narrow down to donors in the same HSG
-    # hsg = df_attr.query("id==@rec & tag=='receiver'")['hsg']
-    # hsg1 = df_attr.query("id in @donors & tag=='donor'")['hsg']
-    # ix1 = hsg1.isin(hsg)
-    # if sum(ix1) > 0:
-    #     dists = np.array(dists)[ix1]
-    #     donors = np.array(donors)[ix1]
-
     return donors, dists
 
 
@@ -235,6 +237,7 @@ def assign_donors(
     dist_attr: pd.DataFrame,
     dist_spatial: pd.DataFrame,
     df_attr: pd.DataFrame,
+    id_col: str = "div_id",
 ) -> pd.DataFrame:
     """Assign donors based on clusters and spatial distance and apply additional constrains."""
     df_donor = pd.DataFrame()
@@ -246,7 +249,7 @@ def assign_donors(
         # apply additional donor constraints1
         if df_attr is not None:
             donors1, dists1 = apply_donor_constraints(
-                receiver, donors1, dists1, config, df_attr
+                receiver, donors1, dists1, config, df_attr, id_col
             )
 
         # if applicable, choose donor with the smallest attribute distances
@@ -271,13 +274,10 @@ def assign_donors(
         dists1 = dists1[range(nd_max)]
         donors1 = donors1[range(nd_max)]
 
-        # if scenario == "proximity":
-        #     print(f"Receiver: {receiver}, Donors: {donors1}, Distances: {dists1}")
-
         # add the donor/receiver pair to the pairing table
         if len(donors1) > 0:
             pair1 = {
-                "divide_id": receiver,
+                id_col: receiver,
                 "tag": scenario,
                 "donor": donors1[0],
                 "distSpatial": dists1[0],

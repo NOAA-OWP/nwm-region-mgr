@@ -1,6 +1,6 @@
 sample_file_path|inputs/region/attr_datasets/hlr/attr_hlr_conus.parquet
 title|File containing HLR attribute data for all catchments in a NWM domain (e.g., CONUS).
-divide_id|Unique identifier for each catchment.
+div_id|Unique identifier for each catchment.
 AQPERMNEW|aquifer permeability
 SLOPE|mean slope
 TAVE|mean annual temperature
@@ -11,5 +11,5 @@ SAND|percentage of sand in the soil
 MINELE|minimum elevation
 RELIEF|relief
 PFLATTOT|total percentage of flatland
-PFLATLOW|percentage of flatlad in the lowland area
-PFALTUP|percentage of flatlat in the upland area
+PFLATLOW|percentage of flatland in the lowland area
+PFLATUP|percentage of flatland in the upland area

@@ -16,6 +16,7 @@ from nwm_region_mgr.utils.dict_utils import (
 )
 from nwm_region_mgr.utils.hydrofabric_utils import (
     area_weighted_average,
+    dissolve_polygons,
     find_gages_within_buffer,
 )
 from nwm_region_mgr.utils.io_utils import read_table, save_data
@@ -43,6 +44,7 @@ __all__ = [
     "remove_nulls",
     "convert_enum_to_value",
     "flatten_dict",
+    "dissolve_polygons",
     "find_gages_within_buffer",
     "area_weighted_average",
     "read_table",

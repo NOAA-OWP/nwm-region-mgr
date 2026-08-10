@@ -1,0 +1,135 @@
+### Configuration for parameter regionalization application
+general:
+  attr_dataset_list: ['ngen','hydroatlas'] # list of attribute datasets. Supported options: 'ngen', 'hlr', 'streamcat', 'hydroatlas'.
+  algorithm_list: ['kmeans']  # list of algorithms to use for parameter regionalization. Supported options: 'gower', 'urf', 'kmeans', 'kmedoids', 'hdbscan', 'birch', 'proximity'. 
+  #manual_pairings_file: '{static_data_dir}/region/manual_pairs/manual_pairs_vpu{vpu_list}_nhf.csv'  # path to the manual pairings file; if specified, the manual pairings will override the algorithm-based pairings
+
+  logging: # define logging configurations
+    level: info  # logging level, options: debug, info, warning, error, critical
+    log_to_file: True  # whether to log to a file
+    file: '{base_dir}/outputs/region/{run_name}/parreg_{domain}.log'
+    
+donor:
+  buffer_km: 0
+  metric_eval_period: # Evaluation period to be used in identifying qualified donor basins based on metrics
+    col_name: 'evalPeriod'
+    value: 'full'
+  metric_threshold:  # thresholds for metrics to be used in identifying qualified donor basins
+    CSI:
+      min: 0.4
+    KGE: 
+      min: 0.2
+    NSE:
+      min: 0.2
+    PKBIAS:
+      max: 60
+      absolute: True # whether to use absolute value of the metric for thresholding
+
+attr_datasets:
+  ngen:
+    attr_list: 
+    attr_select_file: '{static_data_dir}/region/attr_config/attr_selection_ngen.csv'
+    attr_data_file: '{static_data_dir}/region/attr_datasets/ngen/attr_ngen_{domain}.parquet'
+    base_attr_list: ['elevation_mean', 'slope250m_mean', 'aspect_circmean']
+  hlr:
+    attr_list:
+    attr_select_file: '{static_data_dir}/region/attr_config/attr_selection_hlr.csv'
+    attr_data_file: '{static_data_dir}/region/attr_datasets/hlr/attr_hlr_{domain}.parquet'
+    base_attr_list: ['PPT', 'SAND']
+  streamcat:
+    attr_list:
+    attr_select_file: '{static_data_dir}/region/attr_config/attr_selection_streamcat.csv'
+    attr_data_file: '{static_data_dir}/region/attr_datasets/streamcat/attr_streamcat_{domain}.parquet'
+    base_attr_list: ['Precip_Minus_EVT', 'Elev', 'BFI']
+  hydroatlas:
+    attr_list:
+    attr_select_file: '{static_data_dir}/region/attr_config/attr_selection_hydroatlas.csv'
+    attr_data_file: '{static_data_dir}/region/attr_datasets/hydroatlas/attr_hydroatlas_{domain}.parquet'
+    base_attr_list: ['ele_mt_sav', 'dis_m3_pyr','run_mm_syr','pre_mm_syr']
+
+snow_cover:
+  consider_snowness: False  # whether to perform regionalization separately for snow-covered and snow-free basins (must be False for hi and prvi domains)
+  snow_cover_file: '{static_data_dir}/region/attr_datasets/hydroatlas/attr_hydroatlas_{domain}.parquet'  # path to the snow cover data file
+  column: 'snw_pc_syr'  # column name for snow cover percent in the snow cover data file
+  threshold: 20 # threshold for snow cover percent to determine snowiness category
+
+output:
+    pairs:
+      save: True
+      path: '{base_dir}/outputs/region/{run_name}/pairs'
+      stem: 'pairs_{algorithm_list}_{domain}_vpu{vpu_list}'
+      stem_suffix: '_mswm'  # suffix for the pairs file to be used by MSWM
+      format: 'parquet'
+      plots:
+        spatial_map: True
+        histogram: True
+        columns_to_plot: ['distSpatial', 'distAttr']  # columns to plot    
+    params:
+      save: True
+      path: '{base_dir}/outputs/region/{run_name}/params'
+      stem: 'formulation_params_{algorithm_list}_{domain}_vpu{vpu_list}'
+      format: 'csv'
+      plots:
+        spatial_map: True
+        columns_to_plot: ['MP', 'MFSNO', 'satdk', 'satpsi', 'pxtemp', 'plwhc']  
+    attr_data_final:
+      save: True
+      path: '{base_dir}/outputs/region/{run_name}/attr_data_final'
+      stem: 'attr_{domain}_vpu{vpu_list}'
+      format: 'parquet'
+      plots:
+        spatial_map: True
+        histogram: True
+        columns_to_plot: ['ngen_slope250m_mean', 'ngen_aspect_circmean', 'ngen_elevation_mean','hydroatlas_dis_m3_pyr','hydroatlas_run_mm_syr','hydroatlas_pre_mm_syr']  # attributes to plot
+    config_final:
+      save: True
+      path: '{base_dir}/outputs/region/{run_name}'
+      stem: 'config_parreg_final_{domain}_vpu{vpu_list}'
+      format: yaml
+    spatial_distance:
+      save: True
+      path: '{base_dir}/outputs/region/{run_name}/spatial_distance'
+      format: 'parquet'
+
+### algorithm parameters
+algorithms:
+  algo_general:          # general parameters common to all algorithms 
+    max_spa_dist: 1500   # maximum spatial distance (km) (donors with distance larger than this value are discarded, unless no donor smaller than this threshold is available)
+    n_donor_max: 3       # maximum number of donors to keep that satisfy the spatial distance requirement
+    min_var_pca: 0.8     # minimum fraction of total variance explained by PCA components
+    
+  gower:                   # parameters specific to gower 
+    min_attr_dist: 0.1     # minimum attr distance (if one or more donors with distance smaller than this threshold, stop searching)
+    max_attr_dist: 0.25    # maximum attr distance (donors with distance larger than this value are discarded, unless no donor smaller than this threshold is available)
+    min_spa_dist: 200      # starting distance (neighbourhood) for searching donors (km)
+    zero_spa_dist: 1       # distance (in km) threshold where receiver adopts a donor directly (i.e., donor/receiver overlapping each other)
+
+  urf:                     # unsupervised random forest
+    pca: FALSE             # whether to perform PCA prior to applying urf (preliminary testing indicates limited difference in results)
+    n_trees: 500           # number of trees in the forest
+    max_depth: 3           # maximum depth of each tree
+    min_attr_dist: 0.1     # minimum attr distance (if one or more donors with distance smaller than this threshold, stop searching)
+    max_attr_dist: 0.25    # maximum attr distance (donors with distance larger than this value are discarded, unless no donor smaller than this threshold is available)
+    min_spa_dist: 200      # starting distance (neighbourhood) for searching donors (km)
+    zero_spa_dist: 1       # distance (in km) threshold where receiver adopts a donor directly (i.e., donor/receiver overlapping each other)
+  
+  kmeans:                # parameters specific to k-means approach
+    n_iter_max: 100      # number of maximum iterations
+    init: k-means++      # initialization method, choose from 'random', 'k-means++', 'forgy', 'random_partition'
+    n_init: 3            # number of times the k-means algorithm will be run with different centroid seeds
+
+  kmedoids:              # parameters specific to the K-mediods approach
+    n_iter_max: 100      # maximum number of iterations
+    init: heuristic      # initialization method, choose from 'random', 'heuristic'
+
+  hdbscan:                 # parameters specific to HDBSCAN
+    n_donor_max: 20         # number of donor basins in a cluster when no further clustering is needed
+    min_cluster_size: 3     # minimum cluster size (to avoid being considered noise)
+
+  birch:                  # parameters specific to BIRCH
+    branching_factor: 50  # branching factor
+    min_thresh: 1.5       # min and max threshold parameters - the algorithm will iterate through threshold between these to identify a suitable threshold
+    max_thresh: 4.0
+    max_resample: 20      # maximum number of times to resample the data (since order of objects impacts the clustering results)   
+
+    

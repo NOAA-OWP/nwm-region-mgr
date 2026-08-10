@@ -1,0 +1,5 @@
+sample_file_path|inputs/region/attr_config/attr_selection_hydroatlas.csv
+title|File to configure the selection of HydroATLAS attributes for parameter regionalization.
+select|Whether to select this attribute for parameter regionalization (1 for yes, 0 for no).
+attr_name|Name of the HydroATLAS attribute to be selected for parameter regionalization.
+description|Description of the HydroATLAS attribute.

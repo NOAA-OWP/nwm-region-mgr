@@ -2,11 +2,12 @@
 
 import logging
 from pathlib import Path
-from typing import Optional
+from typing import Union
 
 import geopandas as gpd
-from shapely.geometry import GeometryCollection, Point
+from shapely.geometry import GeometryCollection, MultiPolygon, Point, Polygon
 from shapely.ops import unary_union
+from shapely.validation import make_valid
 
 from nwm_region_mgr.utils.io_utils import read_table
 from nwm_region_mgr.utils.validation_utils import check_columns_dataframe
@@ -94,7 +95,7 @@ def find_gages_within_buffer(
         gdf1["geometry"] = gdf1.buffer(0)
 
     # dissolve all polygons into one before bufferring
-    combined_geom = unary_union(gdf1.geometry)
+    combined_geom = dissolve_polygons(gdf1, remove_holes=True)
 
     # Create a buffer around the VPU polygon
     gdf_buffered = combined_geom.buffer(buffer * 1000)
@@ -122,7 +123,7 @@ def area_weighted_average(
     gdf_target: gpd.GeoDataFrame,
     gdf_source: gpd.GeoDataFrame,
     value_col: str,
-    target_id_col: str = "divide_id",
+    target_id_col: str = "div_id",
     crs_proj: str = "EPSG:5070",
 ) -> gpd.GeoDataFrame:
     """Map area-weighted average of `value_col` from source polygons to target polygons.
@@ -135,7 +136,7 @@ def area_weighted_average(
         gdf_target: GeoDataFrame with target polygons
         gdf_source: GeoDataFrame with source polygons and the value to be averaged
         value_col: Name of the column in gdf_source to average
-        target_id_col: Name of unique identifier column in gdf_target (default is 'divide_id')
+        target_id_col: Name of unique identifier column in gdf_target (default is 'div_id')
         crs_proj: Projected CRS (in meters) for accurate area computation (default is 'EPSG:5070')
 
     Returns:
@@ -188,3 +189,48 @@ def area_weighted_average(
     gdf_target[new_col] = gdf_target[target_id_col].map(weighted_avg)
 
     return gdf_target
+
+
+def dissolve_polygons(
+    gdf: gpd.GeoDataFrame, remove_holes: bool = False
+) -> Union[Polygon, MultiPolygon]:
+    """Dissolve all polygons into one.
+
+    Parameters
+    ----------
+    gdf : gpd.GeoDataFrame
+        GeoDataFrame containing the polygons to dissolve.
+    remove_holes : bool, optional
+        If True, remove interior holes from polygons.
+
+    Returns
+    -------
+    Union[Polygon, MultiPolygon]
+        A single Polygon or MultiPolygon resulting from the dissolve operation.
+
+    """
+    gdf = gdf.copy()
+
+    # Fix invalid geometries
+    gdf["geometry"] = gdf.geometry.apply(make_valid)
+
+    # Dissolve geometries
+    try:
+        geom = gdf.geometry.union_all()
+    except Exception:
+        geom = unary_union(gdf.geometry)
+
+    # Normalize + optionally remove holes
+    if isinstance(geom, Polygon):
+        if remove_holes:
+            return Polygon(geom.exterior)
+        return geom
+
+    elif isinstance(geom, MultiPolygon):
+        if remove_holes:
+            polygons = [Polygon(p.exterior) for p in geom.geoms]
+            return MultiPolygon(polygons)
+        return geom
+
+    else:
+        raise TypeError(f"Expected Polygon or MultiPolygon, got {type(geom)}")

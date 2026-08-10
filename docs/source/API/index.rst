@@ -9,3 +9,4 @@ API Reference
     nwm_region_mgr.formreg
     nwm_region_mgr.parreg
     nwm_region_mgr.utils
+    nwm_region_mgr.ngen

@@ -70,3 +70,23 @@ line-length = 88
 quote-style = "double"
 indent-style = "space"
 line-ending = "auto"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-v"
+
+filterwarnings = [
+    "ignore::DeprecationWarning"
+]
+
+# How pytest identifies tests
+python_files = "test_*.py *_tests.py"
+python_classes = "Test*"
+python_functions = "test_*"
+
+markers = [
+  "unit: fast unit tests",
+  "integration: lightweight pipeline tests",
+  "functional: tests that run the full pipeline and check outputs",
+  "slow: tests that take a long time (minutes to hours) to run",
+]

@@ -1,0 +1,96 @@
+# Configuration for formulation regionalization
+general:
+  huc12_hydrofabric_file: '{static_data_dir}/region/NHDPlusV21/NHDPlusNationalData/NationalWBDSnapshot.gdb' #non-AK domains
+  #huc12_hydrofabric_file: '{static_data_dir}/region/NHDPlusV21/NHD_H_Alaska_State_GPKG.gpkg'  # AK domain
+  divide_huc12_cwt_file: '{static_data_dir}/region/cwt_divide_huc12/cwt_huc12_divide_{domain}.csv' # Path to crosswalk file for HUC12 and NextGen catchments.
+
+  calib_basins_only: False  # whether to run formulation selection only for calibrated basins (based on summary score)
+  formulation_to_include: # List of competing formulations required to be considered in the selection process
+  formulation_to_exclude: # List of formulation to exclude from the selection process
+  consider_cost: False  # whether to consider computational cost
+
+  logging: # define logging configurations
+    level: info  # logging level, options: debug, info, warning, error, critical
+    log_to_file: True  # whether to log to a file
+    file: '{base_dir}/outputs/region/{run_name}/formreg_{domain}.log'
+
+# Define configurations for the spatial discretization for formulation regionalization
+# For each spatial unit, a single formulation will be identified and applied to all catchments within the unit
+spatial_unit: 
+  huc_level: huc8  #The USGS HUC level to be used for spatial discretization of formulation selection.  
+  nmin_calib_basin: 3 # minimum number of calibration basins required in each spatial unit for formulation selection to be performed
+  basin_fill_method: upscaling # method to find more calibration basins for a spatial unit: upscaling or nearest-neighbor
+  best_formulation: # method to select the best formulation for each spatial unit
+    method: average_score # method can be either 'total_score' or 'average_score'
+    type: divide  # type can be either 'basin' or 'divide'
+    tolerance: 0.05  # tolerance for the summary score
+
+# Define configurations to compute the summary score for each competing formulation in each calibration basin
+# The summary score is calculated as the weighted average of selected metrics (each normalized to be between 0 and 1).
+# The final summary score is a number between 0 and 1, and the higher the score, the better the performance
+summary_score:
+  metric_eval_period: # Evaluation period to be used for computing the summary score
+    col_name: evalPeriod
+    value: full
+
+  metrics: # List of metrics to be used in computing the summary score; add or remove metrics as needed (but weights should sum to 1)
+    CSI:
+      upper: 1.0   # upper bound of the metric for normalization; if not defined, the max value in the dataset will be used as the upper bound
+      lower: 0.0   # lower bound of the metric for normalization; if not defined, the min value in the dataset will be used as the lower bound
+      orientation: positive   # whether a higher value of the metric indicates better performance (positive) or worse performance (negative)
+      weight: 0.25
+    KGE:
+      upper: 1.0
+      lower: -0.5
+      orientation: positive
+      weight: 0.25
+    NSE:
+      upper: 1.0
+      lower: -0.5
+      orientation: positive
+      weight: 0.25
+    PKBIAS:
+      upper: 300.0
+      lower: 0.0
+      orientation: negative
+      weight: 0.25
+      absolute: True  # whether to use absolute value of bias for normalization
+
+# Define the computational cost of each formulation to assist in the selection process.
+formulation_cost: 
+  file:  '{static_data_dir}/region/formulation_costs_secs_per_catchment.csv' # Path to the file containing the computational cost of each formulation
+  costs: # List of formulations and their corresponding computational costs
+    "noah-owp-modular ueb cfe-x t-route": 10
+    # "noah-owp-modular sac-sma t-route": 20
+    # "noah-owp-modular cfe-x t-route": 30
+    # "noah-owp-modular topmodel t-route": 25
+    # "noah-owp-modular ueb lasam t-route": 30
+
+# Configurations for the output of formulation regionalization
+output:
+
+  formulation: # Output configurations for the selected formulations
+    save: True
+    path: '{base_dir}/outputs/region/{run_name}/formulations'
+    stem: 'form_{domain}_vpu{vpu_list}' 
+    stem_suffix: '_pars'  # suffix for the formulation file with parameters
+    format: parquet
+    plots:
+      spatial_map: True  # whether to create spatial map of selected formulations & scores
+      histogram: True  # whether to create histogram of scores
+
+  config_final: # Final configuration file after processing and validation
+    save: True
+    path: '{base_dir}/outputs/region/{run_name}'
+    stem: 'config_formreg_final_{domain}_vpu{vpu_list}'
+    format: yaml
+  
+  summary_score: # Output configurations for the summary score
+    save: True
+    path: '{base_dir}/outputs/region/{run_name}/summary_score'
+    stem: 'score_{domain}_vpu{vpu_list}'
+    stem_suffix: '_all_gages'  # suffix for the summary score file containing all gages in the domain
+    format: parquet
+    plots:
+      histogram: True
+      spatial_map: True

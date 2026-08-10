@@ -2,7 +2,7 @@ name: documentation
 
 on:
   push:
-    branches: [ "documentation" ]
+    branches: [ "development" ]
 
 permissions:
   contents: write
@@ -17,8 +17,7 @@ jobs:
           python-version: "3.11"
       - name: Install dependencies
         run: |
-          pip install -r docs/source/requirements.txt
-          pip install .
+          pip install .[docs]
       - name: Debug Python imports
         run: |
           python -c "import nwm_region_mgr.parreg.config_schema; print('Import OK')"

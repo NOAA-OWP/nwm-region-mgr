@@ -1,47 +1,56 @@
-### general 
+### Configuration for parameter regionalization application
 general:
-  n_procs: -1  # number of processes to use for parallel processing, -1 for all available cores
-  attr_dataset_list: ['hlr','streamcat']
-  algorithm_list: ['kmeans']  # list of algorithms to use for parameter regionalization
-  #algorithm_list: ['gower','urf','kmeans', 'kmedoids', 'hdbscan', 'birch']
+  attr_dataset_list: ['ngen','streamcat'] # list of attribute datasets. Supported options: 'ngen', 'hlr', 'streamcat', 'hydroatlas'.
+  algorithm_list: ['kmeans']  # list of algorithms to use for parameter regionalization. Supported options: 'gower', 'urf', 'kmeans', 'kmedoids', 'hdbscan', 'birch', 'proximity'. 
+  #manual_pairings_file: '{static_data_dir}/region/manual_pairs/manual_pairs_vpu{vpu_list}_nhf.csv'  # path to the manual pairings file; if specified, the manual pairings will override the algorithm-based pairings
 
+  logging: # define logging configurations
+    level: info  # logging level, options: debug, info, warning, error, critical
+    log_to_file: True  # whether to log to a file
+    file: '{base_dir}/outputs/region/{run_name}/parreg_{domain}.log'
+    
 donor:
   buffer_km: 200
-  metric_eval_period:
+  metric_eval_period: # Evaluation period to be used in identifying qualified donor basins based on metrics
     col_name: 'evalPeriod'
     value: 'full'
-  metric_threshold:
-    cor:
+  metric_threshold:  # thresholds for metrics to be used in identifying qualified donor basins
+    CSI:
       min: 0.4
-    kge: 
+    KGE: 
       min: 0.2
-    nse:
+    NSE:
       min: 0.2
-    bias:
+    PKBIAS:
       max: 60
-      absolute: TRUE
+      absolute: True # whether to use absolute value of the metric for thresholding
 
 attr_datasets:
   ngen:
     attr_list: 
-    attr_select_file: '{base_dir}/inputs/region/attr_config/attr_selection_ngen.csv'
-    attr_data_file: '{base_dir}/inputs/region/attr_datasets/ngen/attr_ngen_{domain}.parquet'
-    base_attr_list: ['elevation', 'slope', 'aspect']
+    attr_select_file: '{static_data_dir}/region/attr_config/attr_selection_ngen.csv'
+    attr_data_file: '{static_data_dir}/region/attr_datasets/ngen/attr_ngen_{domain}.parquet'
+    base_attr_list: ['elevation_mean', 'slope250m_mean', 'aspect_circmean']
   hlr:
     attr_list:
-    attr_select_file: '{base_dir}/inputs/region/attr_config/attr_selection_hlr.csv'
-    attr_data_file: '{base_dir}/inputs/region/attr_datasets/hlr/attr_hlr_{domain}.parquet'
+    attr_select_file: '{static_data_dir}/region/attr_config/attr_selection_hlr.csv'
+    attr_data_file: '{static_data_dir}/region/attr_datasets/hlr/attr_hlr_{domain}.parquet'
     base_attr_list: ['PPT', 'SAND']
   streamcat:
     attr_list:
-    attr_select_file: '{base_dir}/inputs/region/attr_config/attr_selection_streamcat.csv'
-    attr_data_file: '{base_dir}/inputs/region/attr_datasets/streamcat/attr_streamcat_{domain}.parquet'
+    attr_select_file: '{static_data_dir}/region/attr_config/attr_selection_streamcat.csv'
+    attr_data_file: '{static_data_dir}/region/attr_datasets/streamcat/attr_streamcat_{domain}.parquet'
     base_attr_list: ['Precip_Minus_EVT', 'Elev', 'BFI']
+  hydroatlas:
+    attr_list:
+    attr_select_file: '{static_data_dir}/region/attr_config/attr_selection_hydroatlas.csv'
+    attr_data_file: '{static_data_dir}/region/attr_datasets/hydroatlas/attr_hydroatlas_{domain}.parquet'
+    base_attr_list: ['ele_mt_sav', 'dis_m3_pyr','run_mm_syr','pre_mm_syr']
 
 snow_cover:
   consider_snowness: True  # whether to perform regionalization separately for snow-covered and snow-free basins (must be False for hi and prvi domains)
-  snow_cover_file: '{base_dir}/inputs/region/snow_frac/vpu{vpu_list}_snow_frac.parquet'  # path to the snow cover data file
-  column: 'snow_pc_hydroatlas'  # column name for snow cover percent in the snow cover data file
+  snow_cover_file: '{static_data_dir}/region/attr_datasets/hydroatlas/attr_hydroatlas_{domain}.parquet'  # path to the snow cover data file
+  column: 'snw_pc_syr'  # column name for snow cover percent in the snow cover data file
   threshold: 20 # threshold for snow cover percent to determine snowiness category
 
 output:
@@ -62,7 +71,7 @@ output:
       format: 'csv'
       plots:
         spatial_map: True
-        columns_to_plot: ['MP', 'MFSNO', 'uztwm', 'uzfwm', 'pxtemp', 'plwhc']  
+        columns_to_plot: ['MP', 'MFSNO', 'satdk', 'satpsi', 'pxtemp', 'plwhc']  
     attr_data_final:
       save: True
       path: '{base_dir}/outputs/region/{run_name}/attr_data_final'
@@ -71,11 +80,12 @@ output:
       plots:
         spatial_map: True
         histogram: True
-        columns_to_plot: ['streamcat_Elev', 'streamcat_BFI', 'streamcat_Precip_Minus_EVT','hlr_PMPE', 'hlr_SAND','hlr_TAVE']  # attributes to plot
+        columns_to_plot: ['ngen_slope250m_mean', 'ngen_aspect_circmean', 'ngen_elevation_mean','streamcat_Perm', 'streamcat_BFI', 'streamcat_Precip_Minus_EVT']  # attributes to plot
     config_final:
       save: True
-      path: '{base_dir}/outputs/region/{run_name}/config_parreg_final.yaml'
-      format: 
+      path: '{base_dir}/outputs/region/{run_name}'
+      stem: 'config_parreg_final_{domain}_vpu{vpu_list}'
+      format: yaml
     spatial_distance:
       save: True
       path: '{base_dir}/outputs/region/{run_name}/spatial_distance'

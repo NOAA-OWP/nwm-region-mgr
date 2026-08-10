@@ -1,12 +1,12 @@
 """Functions to create donor-receiver pairs using clustering methods.
 
-This function performs donor-receiver pairing based on clustering using
-  k-means clustering (method = "kmeans")
-  k-medoids clustering (method = "kmedoids")
-  HDBSCAN (method = "hdbscan") - Hierarchical Density-Based Spatial Clustering of Applications with Noise.
-     Finds core samples of high density and expands clusters from them.
-  BIRCH (method = "birch") - Balanced Iterative Reducing & Clustering with Hierarchy. Scalable for large datasets.
-     Order of points in the dataset influences the outcome. Hence interactive resampling is implemented here.
+This function performs donor-receiver pairing based on clustering using:
+    - k-means clustering (method = "kmeans")
+    - k-medoids clustering (method = "kmedoids")
+    - HDBSCAN (method = "hdbscan") - Hierarchical Density-Based Spatial Clustering of Applications with Noise.
+    Finds core samples of high density and expands clusters from them.
+    - BIRCH (method = "birch") - Balanced Iterative Reducing & Clustering with Hierarchy. Scalable for large datasets.
+    Order of points in the dataset influences the outcome. Hence interactive resampling is implemented here.
 
 Notes:
   1) the clustering is done in multiple rounds to handle data gaps in attributes
@@ -44,7 +44,12 @@ class ClusterPairer(Pairer):
     @property
     def receivers(self):
         """All receivers to find donor for."""
-        return self.df_attr_all[~self.df_attr_all["is_donor"]]["divide_id"].values
+        # return self.df_attr_all[~self.df_attr_all["is_donor"]][self.div_col].values
+        return (
+            self.df_attr_all.loc[~self.df_attr_all["is_donor"], self.div_col]
+            .astype("string")
+            .tolist()
+        )
 
     @property
     def total_number_of_receivers(self):
@@ -101,6 +106,9 @@ class ClusterPairer(Pairer):
                 df_attr.drop(self.config["non_attr_cols"], axis=1)
             )
 
+            # convert to float32 to save memory for clustering algorithms
+            df_attr_reduced = df_attr_reduced.astype(np.float32)
+
             # process snowy and non-snowy catchments separately
             processed_receivers_df = self.process_snow_groups(
                 df_attr, df_attr_reduced, processed_receivers_df, snowy=True
@@ -109,7 +117,7 @@ class ClusterPairer(Pairer):
                 df_attr, df_attr_reduced, processed_receivers_df, snowy=False
             )
 
-            processed_receiver_ids = processed_receivers_df["divide_id"].unique()
+            processed_receiver_ids = processed_receivers_df[self.div_col].unique()
 
         return processed_receivers_df
 
@@ -131,8 +139,8 @@ class ClusterPairer(Pairer):
         df_attr_reduced = df_attr_reduced[df_attr["snowy"] == snowy]
         df_attr = df_attr[df_attr["snowy"] == snowy]
 
-        donors = df_attr[df_attr["is_donor"]]["divide_id"].tolist()
-        receivers = df_attr[~df_attr["is_donor"]]["divide_id"].tolist()
+        donors = df_attr[df_attr["is_donor"]][self.div_col].tolist()
+        receivers = df_attr[~df_attr["is_donor"]][self.div_col].tolist()
 
         if len(donors) == 0 and len(receivers) > 0:
             logger.warning(
@@ -141,8 +149,8 @@ class ClusterPairer(Pairer):
             )
             df_attr_reduced = df_attr_reduced_copy.copy()
             df_attr = df_attr_copy.copy()
-            donors = df_attr[df_attr["is_donor"]]["divide_id"].tolist()
-            receivers = df_attr[~df_attr["is_donor"]]["divide_id"].tolist()
+            donors = df_attr[df_attr["is_donor"]][self.div_col].tolist()
+            receivers = df_attr[~df_attr["is_donor"]][self.div_col].tolist()
 
         # remove any receivers that are also donors in df_attr (due to issues with hydrofabric,
         # e.g., two different gages sharing the exact same divides)
@@ -151,7 +159,7 @@ class ClusterPairer(Pairer):
         if len(receivers) > 0:
             cat_type = "snowy" if snowy else "non-snowy"
             logger.info(
-                f"======= {len(receivers)} {cat_type}  receiver catchments ========"
+                f"======= {cat_type} catchments, receivers: {len(receivers)}, donors: {len(donors)} ========"
             )
             logger.debug(f"{cat_type} receiver catchments: {receivers}")
 
@@ -164,6 +172,7 @@ class ClusterPairer(Pairer):
             self.dist_spatial,
             self.df_attr_all,
             self._apply_algorithm,
+            self.div_col,
         )
         return cgp.process_group()
 
@@ -181,6 +190,7 @@ class ClusterGroupPairer:
         dist_spatial: pd.DataFrame,
         df_attr_all: pd.DataFrame,
         _apply_algorithm,
+        div_col: str = "div_id",
     ):
         """Initialize Cluster Group Pairer."""
         self.donors = donors
@@ -191,6 +201,7 @@ class ClusterGroupPairer:
         self.dist_spatial = dist_spatial
         self.df_attr_all = df_attr_all
         self._apply_algorithm = _apply_algorithm
+        self.div_col = div_col
 
     @property
     def receivers_to_be_processed_for_group(self) -> list:
@@ -201,7 +212,7 @@ class ClusterGroupPairer:
             return [
                 x
                 for x in self.receivers
-                if x not in self.processed_receivers_df["divide_id"].tolist()
+                if x not in self.processed_receivers_df[self.div_col].tolist()
             ]
 
     @property
@@ -226,7 +237,7 @@ class ClusterGroupPairer:
     @property
     def processed_receiver_ids(self):
         """Ids of receivers that have already been processed."""
-        return self.processed_receivers_df["divide_id"].to_list()
+        return self.processed_receivers_df[self.div_col].to_list()
 
     @property
     def number_of_donors(self) -> int:
@@ -323,7 +334,7 @@ class ClusterGroupPairer:
             return [
                 x
                 for x in self.receivers_to_be_processed_for_group
-                if x not in processed_receivers_for_group_df["divide_id"].tolist()
+                if x not in processed_receivers_for_group_df[self.div_col].tolist()
             ]
 
     def apply_proximity_algorithm(
@@ -344,6 +355,7 @@ class ClusterGroupPairer:
             None,
             self.dist_spatial,
             self.df_attr_all,
+            self.div_col,
         )
 
         processed_receivers_for_group_df = pd.concat(
@@ -460,14 +472,14 @@ class ClusterGroupPairer:
             if len(self.processed_receivers_df) == 0:
                 processed_ids = []
             else:
-                processed_ids = self.processed_receivers_df["divide_id"].tolist()
+                processed_ids = self.processed_receivers_df[self.div_col].tolist()
         else:
             if len(self.processed_receivers_df) == 0:
-                processed_ids = processed_receivers_for_group_df["divide_id"].tolist()
+                processed_ids = processed_receivers_for_group_df[self.div_col].tolist()
             else:
                 processed_ids = set(
-                    processed_receivers_for_group_df["divide_id"].tolist()
-                    + self.processed_receivers_df["divide_id"].tolist()
+                    processed_receivers_for_group_df[self.div_col].tolist()
+                    + self.processed_receivers_df[self.div_col].tolist()
                 )
         if len(processed_ids) > 0:
             return [x for x in cluster_receivers if x not in processed_ids]
@@ -567,6 +579,7 @@ class ClusterGroupPairer:
                 None,
                 self.dist_spatial,
                 self.df_attr_all,
+                self.div_col,
             ), cluster_labels
         else:
             return pd.DataFrame(), cluster_labels
@@ -619,6 +632,7 @@ class ClusterGroupPairer:
                     None,
                     self.dist_spatial,
                     self.df_attr_all,
+                    self.div_col,
                 ), cluster_labels
         # for receivers in clusters without donors, choose from all donors based on spatial proximity
         else:
@@ -631,6 +645,7 @@ class ClusterGroupPairer:
                 None,
                 self.dist_spatial,
                 self.df_attr_all,
+                self.div_col,
             ), cluster_labels
 
 

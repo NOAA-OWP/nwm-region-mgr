@@ -3,8 +3,8 @@
 plot_outputs.py
 
 Functions:
-- plot_missing_attr_counts: Plots the number of catchments with missing values for each selected attribute.
-- plot_donor_spatial_map: Plots the spatial distribution of donors within a VPU and its buffer zone.
+    - plot_missing_attr_counts: Plots the number of catchments with missing values for each selected attribute.
+    - plot_donor_spatial_map: Plots the spatial distribution of donors within a VPU and its buffer zone.
 
 """
 
@@ -17,6 +17,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 from matplotlib.lines import Line2D
 from shapely.geometry import MultiPolygon, Point, Polygon
+from shapely.validation import make_valid
 
 from nwm_region_mgr.parreg import config_schema as cs
 from nwm_region_mgr.utils import read_table
@@ -128,11 +129,11 @@ def plot_donor_spatial_map(
 
     """
     # read in lat/lon of all donors
-    gage_id_name = getattr(config.general.id_col, "gage", "gage_id")
-    donors_all = read_table(config.general.donor_gage_file, dtype={gage_id_name: str})
+    gage_col = getattr(config.general.id_col, "gage", "gage_id")
+    donors_all = read_table(config.general.donor_gage_file, dtype={gage_col: str})
 
     # filter donors based on the donor_basins list (qualified donors)
-    donors = donors_all[donors_all[gage_id_name].isin(donor_basins)]
+    donors = donors_all[donors_all[gage_col].isin(donor_basins)]
     donor_gdf = gpd.GeoDataFrame(
         donors,
         geometry=[Point(xy) for xy in zip(donors["longitude"], donors["latitude"])],
@@ -146,17 +147,20 @@ def plot_donor_spatial_map(
     fig, ax = plt.subplots(figsize=(8, 5))
 
     # Plot base layer, use combined_geom if ring is empty (buffer is zero)
+    gdf_buffered = make_valid(gdf_buffered)
+    combined_geom = make_valid(combined_geom)
+
     ring = gdf_buffered.difference(combined_geom)
+
     if ring.is_empty:
         base_geom = combined_geom
     else:
         base_geom = ring
+    base_geom = make_valid(base_geom)
+    base_geom = base_geom.buffer(0)  # fix any invalid geometries in the ring
     ring_gdf = gpd.GeoDataFrame(geometry=[base_geom], crs=donor_gdf.crs)
-    ring_gdf.plot(
-        ax=ax,
-        color="lightgray",
-        edgecolor="black",
-    )
+
+    ring_gdf.plot(ax=ax, facecolor="lightgray", edgecolor="black")
 
     # donor and non-donor calibration basins in the buffered VPU
     non_donor_gdf = donor_gdf[~donor_gdf["gage_id"].isin(final_donor_basins)]
@@ -250,149 +254,6 @@ def plot_donor_spatial_map(
                 leg_donor_buffer,
                 leg_buffer_zone,
             ]
-
-    # Add legend
-    ax.legend(handles=legend_elements, loc="center left", bbox_to_anchor=(1, 0.5))
-
-    # title
-    plt.title(f"Donor basins available for VPU {vpu} regionalization")
-
-    # tidy up plot
-    ax.set_axis_off()
-    plt.tight_layout()
-
-    # save the figure
-    out = getattr(config.output, "pairs", None)
-    if out is None:
-        msg = "Output configuration for 'pairs' is not defined. Skipping plot saving."
-        logger.warning(msg)
-        return
-
-    outfile = Path(
-        out.path,
-        f"plots/map_donors_{config.general.domain}_vpu{vpu}.png",
-    )
-    outfile.parent.mkdir(parents=True, exist_ok=True)
-    plt.savefig(outfile, bbox_inches="tight")
-    logger.info(f"Donor spatial map saved to {outfile}")
-
-    plt.close(fig)
-
-
-def plot_donor_spatial_map_old(
-    config: cs.Config,
-    vpu: str,
-    donor_basins: list,
-    final_donor_basins: list,
-    gdf_buffered: gpd.GeoDataFrame,
-    combined_geom: gpd.GeoDataFrame,
-) -> None:
-    """Plot the spatial distribution of donors within a VPU and its buffer zone.
-
-    Args:
-        config : cs.Config
-            Configuration object containing settings for the regionalization.
-        vpu : str
-            The VPU (Vector Processing Unit) identifier.
-        donor_basins : list
-            List of initial donor basin identifiers.
-        final_donor_basins : list
-            List of final donor basin identifiers.
-        gdf_buffered : gpd.GeoDataFrame
-            GeoDataFrame of the buffered VPU polygon.
-        combined_geom : gpd.GeoDataFrame
-            GeoDataFrame of the combined geometry of the VPU.
-
-    """
-    # read in lat/lon of all donors
-    gage_id_name = getattr(config.general.id_col, "gage", "gage_id")
-    donors_all = read_table(config.general.donor_gage_file, dtype={gage_id_name: str})
-
-    # filter donors based on the donor_basins list (qualified donors)
-    donors = donors_all[donors_all[gage_id_name].isin(donor_basins)]
-    donor_gdf = gpd.GeoDataFrame(
-        donors,
-        geometry=[Point(xy) for xy in zip(donors["longitude"], donors["latitude"])],
-        crs="EPSG:4326",
-    )
-
-    # Project to meters for accurate distance calculations
-    donor_gdf = donor_gdf.to_crs(epsg=3857)
-
-    # visualize the donors selected
-    fig, ax = plt.subplots(figsize=(8, 5))
-
-    # Plot base layer
-    ring = gdf_buffered.difference(combined_geom)
-    ring_gdf = gpd.GeoDataFrame(geometry=[ring], crs=donor_gdf.crs)
-    ring_gdf.plot(
-        ax=ax,
-        color="lightgray",
-        edgecolor="black",
-    )
-
-    # donor and non-donor calibration basins in the buffered VPU
-    non_donor_gdf = donor_gdf[~donor_gdf["gage_id"].isin(final_donor_basins)]
-    final_donor_gdf = donor_gdf[donor_gdf["gage_id"].isin(final_donor_basins)]
-
-    # plot calibration basins in the buffered VPU
-    non_donor_gdf.plot(ax=ax, color="blue", markersize=10, marker="x")
-    final_donor_gdf.plot(ax=ax, color="blue", markersize=10)
-
-    # donors and non-donors in the original VPU
-    donors_vpu = final_donor_gdf[final_donor_gdf.geometry.within(combined_geom)]
-    non_donors_vpu = non_donor_gdf[non_donor_gdf.geometry.within(combined_geom)]
-    donors_vpu.plot(ax=ax, color="red", markersize=10)
-    non_donors_vpu.plot(ax=ax, color="red", markersize=10, marker="x")
-
-    # Create custom legend handles
-    legend_elements = [
-        Line2D(
-            [0],
-            [0],
-            marker="o",
-            color="w",
-            label=f"Donors within VPU ({len(donors_vpu)})",
-            markerfacecolor="red",
-            markersize=8,
-        ),
-        Line2D(
-            [0],
-            [0],
-            marker="o",
-            color="w",
-            label=f"Donors in buffer zone ({len(final_donor_gdf) - len(donors_vpu)})",
-            markerfacecolor="blue",
-            markersize=8,
-        ),
-        Line2D(
-            [0],
-            [0],
-            marker="x",
-            color="red",
-            label=f"non-donors within VPU ({len(non_donors_vpu)})",
-            # markerfacecolor="red",
-            markersize=8,
-        ),
-        Line2D(
-            [0],
-            [0],
-            marker="x",
-            color="blue",
-            label=f"non-donors in buffer zone ({len(non_donor_gdf) - len(non_donors_vpu)})",
-            # markerfacecolor="blue",
-            markersize=8,
-        ),
-        Line2D(
-            [0],
-            [0],
-            marker="s",
-            color="black",
-            label=f"Buffer zone ({round(config.donor.buffer_km)} km)",
-            markerfacecolor="lightgray",
-            markersize=10,
-        ),
-    ]
 
     # Add legend
     ax.legend(handles=legend_elements, loc="center left", bbox_to_anchor=(1, 0.5))

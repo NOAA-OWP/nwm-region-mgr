@@ -77,15 +77,15 @@ def create_calval_stats(input_dir: Path, domain1: str, n_sample: int, n_form: in
     formulations = [
         "noah-owp-modular cfe-s t-route",
         "noah-owp-modular cfe-x t-route",
-        "noah-owp-modular lasam t-route",
+        # "noah-owp-modular lasam t-route",
         "noah-owp-modular sac-sma t-route",
-        "noah-owp-modular ueb cfe-s t-route",
+        # "noah-owp-modular ueb cfe-s t-route",
         "noah-owp-modular snow-17 cfe-s t-route",
         "noah-owp-modular snow-17 cfe-x t-route",
         "noah-owp-modular snow-17 sac-sma t-route",
-        "noah-owp-modular snow-17 lasam t-route",
-        "noah-owp-modular ueb lasam t-route",
-        "noah-owp-modular ueb cfe-x t-route",
+        # "noah-owp-modular snow-17 lasam t-route",
+        # "noah-owp-modular ueb lasam t-route",
+        # "noah-owp-modular ueb cfe-x t-route",
         # "noah-owp-modular ueb topmodel t-route",
         # "noah-owp-modular snow-17 topmodel t-route",
         # "noah-owp-modular topmodel t-route",
@@ -193,7 +193,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--input_dir",
         type=Path,
-        default=Path("~/work/Gitlab/nwm-region-mgr/inputs").expanduser(),
+        default=Path("~/repos/nwm-region-mgr/inputs/region").expanduser(),
         help="Input directory containing stats and gage files",
     )
     parser.add_argument(

@@ -3,7 +3,7 @@
 process_config.py
 
 Functions:
-- run_formreg_for_vpu: Run the formulation regionalization process for a given VPU.
+    - run_formreg_for_vpu: Run the formulation regionalization process for a given VPU.
 
 """
 

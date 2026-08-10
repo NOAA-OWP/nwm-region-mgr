@@ -1,4 +1,11 @@
-"""Generate documentation for configuration schemas and sample configs used in nwm-region-mgr."""
+"""Generate documentation for configuration schemas and sample configs used in nwm-region-mgr.
+
+This script generates markdown documentation for the configuration schemas used in the NWM Regionalization Manager
+    (nwm-region-mgr) tool. It creates example YAML configuration files and detailed markdown tables describing each
+    field in the configuration schemas, including their types, descriptions, default values, and examples.
+
+The generated markdown file is saved to `docs/source/config_builder/index.md`.
+"""
 
 import re
 from pathlib import Path
@@ -276,10 +283,11 @@ def pydantic_dict_to_lines(dict_rep: dict, indent: int = 0) -> list[str]:
     """Convert a pydantic model to lines in the YAML format."""
     lines = []
     tmp_ind = " " * indent
+    com_buffer = " " * YAML_COMMENT_BUFFER
 
     for k, v in dict_rep.items():
         comment = (
-            f" #{v.get('description')}"
+            f"{com_buffer}# {v.get('description')}"
             if v.get("description") != NO_DESCRIPTION_STR
             else ""
         )
@@ -340,7 +348,10 @@ def generate_yaml_template(model_cls: type[BaseModel], top_key: str = None) -> s
         lines = []
         indent = 0
     lines.extend(pydantic_dict_to_lines(dict_rep, indent))
-    lines = justify_yaml_comments(lines)
+
+    # comment out comments justification for now, as it can create very long lines and
+    # hence make comments in the sample yaml files not readily viewable
+    # lines = justify_yaml_comments(lines)
     return "\n".join(lines)
 
 

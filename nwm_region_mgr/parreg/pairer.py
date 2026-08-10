@@ -1,7 +1,7 @@
 """Base model of Pairer for donor-receiver pairing."""
 
 import pandas as pd
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class Pairer(BaseModel):
@@ -11,6 +11,10 @@ class Pairer(BaseModel):
 
     config: dict
     """Configuration for the Pairer."""
+
+    div_col: str = Field(
+        default="div_id", description="Column name for divide (catchment) ID."
+    )
 
     df_attr_all: pd.DataFrame
     """DataFrame containing attributes for all donors and receivers."""

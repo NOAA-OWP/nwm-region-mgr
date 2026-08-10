@@ -4,18 +4,18 @@ This module provides functions to select formulations based on summary scores of
 as well as formulation costs if provided in the configuration.
 
 Functions:
-- _get_gages_with_shared_formulations: Identify the formulations shared by a number of gages.
-- _find_gages_nearest_neighbor: Find gages for a given HUC ID using the nearest neighbor method.
-- _find_gages_upscaling: Find gages for a given HUC ID using the upscaling method.
-- _find_calibration_gages: Find gages for a given HUC ID in the summary scores DataFrame.
-- _get_formulation_costs: Retrieve formulation costs from the configuration.
-- _select_formulation_given_score: Select a formulation for each spatial unit based on the method specified.
-- _identify_best_formulation_per_gage: Identify the best formulation for each gage based on summary scores and costs.
-- select_formulation_donors_only: Select formulations for donor basins only.
-- select_formulation_all: Select formulations for all basins.
-- save_formulation_results: Save the formulation selection results to file.
-- plot_formulation_results: Plot the formulation selection results.
-- select_formulation: Head function to select formulations for each spatial unit in the VPU.
+    - _get_gages_with_shared_formulations: Identify the formulations shared by a number of gages.
+    - _find_gages_nearest_neighbor: Find gages for a given HUC ID using the nearest neighbor method.
+    - _find_gages_upscaling: Find gages for a given HUC ID using the upscaling method.
+    - _find_calibration_gages: Find gages for a given HUC ID in the summary scores DataFrame.
+    - _get_formulation_costs: Retrieve formulation costs from the configuration.
+    - _select_formulation_given_score: Select a formulation for each spatial unit based on the method specified.
+    - _identify_best_formulation_per_gage: Identify the best formulation for each gage based on summary scores and costs.
+    - select_formulation_donors_only: Select formulations for donor basins only.
+    - select_formulation_all: Select formulations for all basins.
+    - save_formulation_results: Save the formulation selection results to file.
+    - plot_formulation_results: Plot the formulation selection results.
+    - select_formulation: Head function to select formulations for each spatial unit in the VPU.
 
 """
 
@@ -87,7 +87,7 @@ def _find_gages_nearest_neighbor(
     huc_id: str,
     df: pd.DataFrame,
     gage_file: Path,
-    gage_id_col: str,
+    gage_col: str,
     min_gages: int,
     gdf: gpd.GeoDataFrame,
 ) -> tuple[list, list, list]:
@@ -97,7 +97,7 @@ def _find_gages_nearest_neighbor(
         huc_id (str): HUC ID to find gages for.
         df (pd.DataFrame): DataFrame of summary scores.
         gage_file (Path): Path to the donor gage file containing gage_id, longitude, and latitude.
-        gage_id_col (str): Column name for gage ID in the gage file.
+        gage_col (str): Column name for gage ID in the gage file.
         min_gages (int): Minimum number of gages required for each spatial unit.
         gdf (gpd.GeoDataFrame): GeoDataFrame of hydrofabric (HUC12) polygons.
 
@@ -108,7 +108,7 @@ def _find_gages_nearest_neighbor(
     """
     # get all calibration gages with valid formulation and summary scores
     gages_calib = (
-        df[~df["formulation"].isna() & ~df["summary_score"].isna()][gage_id_col]
+        df[~df["formulation"].isna() & ~df["summary_score"].isna()][gage_col]
         .unique()
         .tolist()
     )
@@ -121,7 +121,7 @@ def _find_gages_nearest_neighbor(
     while len(gages) < min_gages and buffer <= max_buffer:
         # find gages within the buffer around huc_id
         gages, distances, _ = find_gages_within_buffer(
-            gage_file, gage_id_col, buffer, gdf=gdf, id=huc_id
+            gage_file, gage_col, buffer, gdf=gdf, id=huc_id
         )
 
         # filter gages to only those that are calibrated, and filter distances accordingly
@@ -135,7 +135,7 @@ def _find_gages_nearest_neighbor(
         found_gages = False
         if len(gages) >= min_gages:
             found_gages, gages, formulations = _get_gages_with_shared_formulations(
-                df[df[gage_id_col].isin(gages)], min_gages=min_gages
+                df[df[gage_col].isin(gages)], min_gages=min_gages
             )
 
         # if no gages are found, increase the buffer size and try again
@@ -162,14 +162,14 @@ def _find_gages_nearest_neighbor(
 
 
 def _find_gages_upscaling(
-    huc_id: str, df: pd.DataFrame, gage_id_col: str, min_gages: int
+    huc_id: str, df: pd.DataFrame, gage_col: str, min_gages: int
 ) -> tuple[list, str, list]:
     """Find gages for the given HUC ID in the DataFrame.
 
     Args:
         huc_id (str): HUC ID to find gages for.
         df (pd.DataFrame): DataFrame of summary scores.
-        gage_id_col (str): Column name for gage ID in the gage file.
+        gage_col (str): Column name for gage ID in the gage file.
         min_gages (int): Minimum number of gages required for each spatial unit.
 
     Returns:
@@ -199,7 +199,7 @@ def _find_gages_upscaling(
         # count the number of unique gages in the new HUC level
         huc_digit = int(huc_level.replace("huc", ""))
         gages = (
-            df[df["huc_id"].str[:huc_digit] == huc_id[:huc_digit]][gage_id_col]
+            df[df["huc_id"].str[:huc_digit] == huc_id[:huc_digit]][gage_col]
             .unique()
             .tolist()
         )
@@ -211,7 +211,7 @@ def _find_gages_upscaling(
         # if there are enough gages, check if they share the same formulations
         if ngage >= min_gages:
             found_gages, gages, formulations = _get_gages_with_shared_formulations(
-                df[df[gage_id_col].isin(gages)], min_gages=min_gages
+                df[df[gage_col].isin(gages)], min_gages=min_gages
             )
 
             if not found_gages:
@@ -220,7 +220,6 @@ def _find_gages_upscaling(
                 )
                 continue
             else:
-                # logger.debug(f"{huc_id}: found {len(gages)} gages ({gages}) at {huc_level} level.")
                 break
 
     return gages, huc_level, formulations
@@ -243,7 +242,7 @@ def _find_calibration_gages(
 
     """
     # get configuration settings
-    gage_id_col = getattr(
+    gage_col = getattr(
         config.general.id_col, "gage", "gage_id"
     )  # column name for gage ID in the DataFrame
     nmin_gages = (
@@ -260,20 +259,18 @@ def _find_calibration_gages(
         logger.error(msg)
         raise ValueError(msg)
 
-    # remove rows with invalid gage_id_col, formulation, and summary_score columns in the DataFrame
+    # remove rows with invalid gage_col, formulation, and summary_score columns in the DataFrame
     df = df[
-        ~df[gage_id_col].isna()
-        & ~df["formulation"].isna()
-        & ~df["summary_score"].isna()
+        ~df[gage_col].isna() & ~df["formulation"].isna() & ~df["summary_score"].isna()
     ]
 
     # check number of calibration gages within the current huc_id
-    gages0 = df[df["huc_id"] == huc_id][gage_id_col].unique().tolist()
+    gages0 = df[df["huc_id"] == huc_id][gage_col].unique().tolist()
     gages0 = [gage for gage in gages0 if pd.notna(gage)]  # remove NaN values
 
     if len(gages0) >= nmin_gages:
         found_gages, gages0, formulations = _get_gages_with_shared_formulations(
-            df[df[gage_id_col].isin(gages0)], min_gages=nmin_gages
+            df[df[gage_col].isin(gages0)], min_gages=nmin_gages
         )
 
     # if there are enough gages at the current huc_id level, return them
@@ -296,14 +293,14 @@ def _find_calibration_gages(
             f"Use nearest-neighbor method for {huc_id} instead."
         )
         gages_nn, dists_nn, formulations = _find_gages_nearest_neighbor(
-            huc_id, df, gage_file, gage_id_col, nmin_gages, gdf
+            huc_id, df, gage_file, gage_col, nmin_gages, gdf
         )
         return gages_nn, dists_nn, "huc" + str(len(huc_id)), formulations
 
     if method == "upscaling":
         # find calibration gages using upscaling method
         gages, huc_level, formulations = _find_gages_upscaling(
-            huc_id, df, gage_id_col, nmin_gages
+            huc_id, df, gage_col, nmin_gages
         )
         dists = [np.nan] * len(gages)
         if len(gages) < nmin_gages:
@@ -312,7 +309,7 @@ def _find_calibration_gages(
     elif method == "nearest-neighbor":
         # find calibration gages using nearest neighbor
         gages, dists, formulations = _find_gages_nearest_neighbor(
-            huc_id, df, gage_file, gage_id_col, nmin_gages, gdf
+            huc_id, df, gage_file, gage_col, nmin_gages, gdf
         )
         huc_level = "huc" + str(
             len(huc_id)
@@ -369,9 +366,9 @@ def _select_formulation_given_score(
     df: pd.DataFrame,
     method: str = "basin",
     type: str = "total_score",
-    id_col: dict[str, str] = {"gage": "gage_id", "divide": "divide_id"},
+    id_col: dict[str, str] = {"gage": "gage_id", "divide": "div_id"},
 ) -> pd.DataFrame:
-    """Compute total score for each spatial unit based on the method specified.
+    """Compute total or average score for each spatial unit based on the method specified.
 
     Args:
         df : pd.DataFrame
@@ -382,7 +379,7 @@ def _select_formulation_given_score(
             Type of total score to compute, either 'total_score' or 'average_score', by default 'total_score'.
         id_col : dict[str, str], optional
             Dictionary mapping spatial unit type to its identifier column name,
-            by default {"gage": "gage_id", "divide": "divide_id"}.
+            by default {"gage": "gage_id", "divide": "div_id"}.
 
     Returns:
         pd.DataFrame
@@ -393,7 +390,7 @@ def _select_formulation_given_score(
     col1 = (
         id_col.get("gage", "gage_id")
         if type == "basin" and "gage_id" in df.columns
-        else id_col.get("divide", "divide_id")
+        else id_col.get("divide", "div_id")
     )
 
     df1 = df[[col1, "formulation", "summary_score", "cost"]].copy()
@@ -427,7 +424,10 @@ def _select_formulation_given_score(
 
     # if there are multiple formulations with the same score, choose the one that has the lowest cost
     if df1.shape[0] > 1:
-        df1 = df1[df1["cost"] == df1["cost"].min()]
+        if df1["cost"].notna().any():
+            df1 = df1.loc[[df1["cost"].idxmin()]]
+        else:
+            df1 = df1.iloc[[0]]
 
     # drop col1
     df1 = df1.drop(columns=[col1])
@@ -440,7 +440,7 @@ def _select_formulation_given_score(
 
 def _identify_best_formulation_per_gage(
     df_score: pd.DataFrame,
-    gage_id_col: str,
+    gage_col: str,
     tolerance: float = 0.05,
     cost_dict: Optional[dict] = None,
 ) -> pd.DataFrame:
@@ -449,7 +449,7 @@ def _identify_best_formulation_per_gage(
     Args:
         df_score : pd.DataFrame
             DataFrame containing summary scores for each formulation and calibrated basin.
-        gage_id_col : str
+        gage_col : str
             Column name for gage ID in the gage file.
         tolerance : float, optional
             Tolerance for the summary score to consider formulations as equally good, by default 0.05.
@@ -462,7 +462,7 @@ def _identify_best_formulation_per_gage(
 
     """
     # for each gage, find the best formulation(s) within the tolerance
-    max_scores = df_score.groupby(gage_id_col)["summary_score"].transform("max")
+    max_scores = df_score.groupby(gage_col)["summary_score"].transform("max")
     best_per_gage = df_score[
         df_score["summary_score"] >= (max_scores - max_scores * tolerance)
     ].copy()
@@ -485,15 +485,15 @@ def _identify_best_formulation_per_gage(
 
         # for each gage, select the formulation with the minimum cost
         best_per_gage = best_per_gage.loc[
-            best_per_gage.groupby(gage_id_col)["cost"].idxmin()
+            best_per_gage.groupby(gage_col)["cost"].idxmin()
         ].copy()
 
         # if there are multiple formulations with the same minimum cost, keep the first one
-        best_per_gage = best_per_gage.drop_duplicates(subset=[gage_id_col])
+        best_per_gage = best_per_gage.drop_duplicates(subset=[gage_col])
     else:
         # choose the first formulation with the highest score for each gage
         best_per_gage = best_per_gage.loc[
-            best_per_gage.groupby(gage_id_col)["summary_score"].idxmax()
+            best_per_gage.groupby(gage_col)["summary_score"].idxmax()
         ].copy()
 
         # initialize cost column to None
@@ -504,6 +504,7 @@ def _identify_best_formulation_per_gage(
 
 def select_formulation_donors_only(
     config: cs.Config,
+    vpu: str,
     df_score: pd.DataFrame,
     cost_dict: Optional[dict] = None,
 ) -> pd.DataFrame:
@@ -512,6 +513,8 @@ def select_formulation_donors_only(
     Args:
         config : cs.Config
             Configuration object containing settings for the regionalization.
+        vpu : str
+            Vector Processing Unit (VPU) for which to select formulations.
         df_score : pd.DataFrame
             DataFrame containing summary scores for each formulation and calibrated basin.
         cost_dict : Optional[dict], optional
@@ -523,10 +526,11 @@ def select_formulation_donors_only(
 
     """
     # get the ID columns from the configuration
-    gage_id_col = getattr(
+    gage_col = getattr(
         config.general.id_col, "gage", "gage_id"
     )  # column name for gage ID in the DataFrame
-    divide_id_col = getattr(config.general.id_col, "divide", "divide_id")
+    div_col = getattr(config.general.id_col, "divide", "div_id")
+    vpu_col = getattr(config.general.id_col, "vpu", "vpu_id")
 
     # score computing method, type, and tolerance
     score_tolerance = config.spatial_unit.best_formulation.tolerance
@@ -534,25 +538,29 @@ def select_formulation_donors_only(
     # identify the best formulation for each gage
     df_best_per_gage = _identify_best_formulation_per_gage(
         df_score,
-        gage_id_col=gage_id_col,
+        gage_col=gage_col,
         tolerance=score_tolerance,
         cost_dict=cost_dict,
     )
 
     # read the crosswalk file for gage/divide relationships
     col_dtype = {
-        gage_id_col: "str",
-        divide_id_col: "str",
+        gage_col: "string",
+        div_col: "string",
+        vpu_col: "string",
     }
     cwt_divide_gage = read_table(config.general.gage_divide_cwt_file, dtype=col_dtype)
 
+    # filter by vpu
+    cwt_divide_gage = cwt_divide_gage[cwt_divide_gage[vpu_col] == vpu].copy()
+
     # merge the crosswalk with the best formulations DataFrame
-    if divide_id_col in df_best_per_gage.columns:
-        df_best_per_gage = df_best_per_gage.drop(columns=[divide_id_col])
+    if div_col in df_best_per_gage.columns:
+        df_best_per_gage = df_best_per_gage.drop(columns=[div_col])
     df_selected = df_best_per_gage.merge(
-        cwt_divide_gage[[gage_id_col, divide_id_col]].drop_duplicates(),
-        on=gage_id_col,
-        how="left",
+        cwt_divide_gage[[gage_col, div_col]].drop_duplicates(),
+        on=gage_col,
+        how="inner",
     )
 
     return df_selected
@@ -586,9 +594,9 @@ def select_formulation_all(
     """
     # get the ID columns from the configuration
     id_cols = config.general.id_col
-    gage_id_col = getattr(id_cols, "gage", "gage_id")
-    divide_id_col = getattr(id_cols, "divide", "divide_id")
-    huc12_id_col = getattr(id_cols, "huc12", "huc_12")
+    gage_col = getattr(id_cols, "gage", "gage_id")
+    div_col = getattr(id_cols, "divide", "div_id")
+    huc12_col = getattr(id_cols, "huc12", "huc_12")
     huc12_layer = getattr(config.general.layer_name, "huc12", "WBDSnapshot_National")
 
     # score computing method, type, and tolerance
@@ -601,18 +609,24 @@ def select_formulation_all(
 
     # crosswalk for gage/divide
     col_dtype = {
-        gage_id_col: "str",
-        divide_id_col: "str",
-        huc12_id_col: "str",
+        gage_col: "string",
+        div_col: "string",
+        huc12_col: "string",
     }
     cwt_divide_gage = read_table(config.general.gage_divide_cwt_file, dtype=col_dtype)
 
     # crosswalk for divide/huc12
     cwt_divide_huc12 = read_table(config.general.divide_huc12_cwt_file, dtype=col_dtype)
 
+    # enforce consistency (critical)
+    for df in [cwt_divide_gage, cwt_divide_huc12]:
+        df[div_col] = df[div_col].astype("string")
+
+    gdf_vpu[div_col] = gdf_vpu[div_col].astype("string")
+
     # filter cwt_divide_huc12 with divides in gdf_vpu (i.e., only keep divides that are in the current VPU)
     cwt_divide_huc12 = cwt_divide_huc12[
-        cwt_divide_huc12[divide_id_col].isin(gdf_vpu[divide_id_col])
+        cwt_divide_huc12[div_col].isin(gdf_vpu[div_col])
     ].copy()
 
     # get spatial units for formulation selection
@@ -620,7 +634,7 @@ def select_formulation_all(
     huc_digit = int(huc_level.replace("huc", ""))
 
     # add huc_id column to cwt_divide_huc12 based on huc_digit
-    cwt_divide_huc12["huc_id"] = cwt_divide_huc12[huc12_id_col].str[:huc_digit]
+    cwt_divide_huc12["huc_id"] = cwt_divide_huc12[huc12_col].str[:huc_digit]
 
     # make sure type of huc_id column is string
     if not pd.api.types.is_string_dtype(cwt_divide_huc12["huc_id"]):
@@ -630,14 +644,14 @@ def select_formulation_all(
         cwt_divide_huc12["huc_id"] = cwt_divide_huc12["huc_id"].astype(str)
 
     # merge the two crosswalks first
-    df_cwt = cwt_divide_huc12[["huc_id", huc12_id_col, divide_id_col]].merge(
-        cwt_divide_gage[[gage_id_col, divide_id_col]].drop_duplicates(),
-        on=divide_id_col,
+    df_cwt = cwt_divide_huc12[["huc_id", huc12_col, div_col]].merge(
+        cwt_divide_gage[[gage_col, div_col]].drop_duplicates(),
+        on=div_col,
         how="left",
     )
 
     # then merge with the score DataFrame
-    df_score = df_score.merge(df_cwt, on=gage_id_col, how="outer")
+    df_score = df_score.merge(df_cwt, on=gage_col, how="outer")
 
     logger.info(
         f"Selecting formulations for VPU {vpu} at {huc_level} level. "
@@ -661,7 +675,7 @@ def select_formulation_all(
     ) as src:
         for feat in src:
             huc_key = next(
-                (k for k in feat["properties"] if k.lower() == huc12_id_col), None
+                (k for k in feat["properties"] if k.lower() == huc12_col), None
             )
             if huc_key and feat["properties"][huc_key][:huc_digit] in huc_ids:
                 features.append(feat)
@@ -682,9 +696,9 @@ def select_formulation_all(
     for huc_id in huc_ids:
         logger.debug(f"Processing HUC ID: {huc_id}")
 
-        # Find actual column name in gdf that matches huc12_id_col (case-insensitive)
+        # Find actual column name in gdf that matches huc12_col (case-insensitive)
         col_match = next(
-            (col for col in huc12_gdf.columns if col.lower() == huc12_id_col.lower()),
+            (col for col in huc12_gdf.columns if col.lower() == huc12_col.lower()),
             None,
         )
 
@@ -711,14 +725,13 @@ def select_formulation_all(
 
         # filter the score DataFrame for identified gages and formulations
         df_huc = df_score[
-            df_score[gage_id_col].isin(gages)
-            & df_score["formulation"].isin(formulations)
+            df_score[gage_col].isin(gages) & df_score["formulation"].isin(formulations)
         ].copy()
 
         # identify best formulation for each gage based on summary scores and/or formulation costs
         df_huc = _identify_best_formulation_per_gage(
             df_huc,
-            gage_id_col=gage_id_col,
+            gage_col=gage_col,
             tolerance=score_tolerance,
             cost_dict=cost_dict,
         )
@@ -731,7 +744,7 @@ def select_formulation_all(
         # append the selected formulation to the list
         if best_formulation.empty:
             logger.warning(
-                f"No valid formulations found for HUC ID: {huc_id}. Skipping this HUC."
+                f"No valid formulations found for HUC8 ID: {huc_id}. Skipping this HUC."
             )
             continue
 
@@ -741,16 +754,21 @@ def select_formulation_all(
         best_formulation["num_gages"] = len(gages)
         best_formulation["distances"] = ", ".join(
             [str(d) for d in dists]
-        )  # join distances as a stringi
+        )  # join distances as a string
 
         df_selected = pd.concat([df_selected, best_formulation], ignore_index=True)
 
     # merge with cwt_divide_huc12 to get the divide_id
-    df_selected = df_selected.merge(
-        cwt_divide_huc12[["huc_id", divide_id_col]].drop_duplicates(),
-        on="huc_id",
-        how="left",
-    )
+    if df_selected.empty:
+        logger.warning(
+            "No formulations were selected for any HUC IDs. Returning an empty DataFrame."
+        )
+    else:
+        df_selected = df_selected.merge(
+            cwt_divide_huc12[["huc_id", div_col]].drop_duplicates(),
+            on="huc_id",
+            how="left",
+        )
 
     # handle formulation selection for calibration gages
     if config.general.approach_calib_basins == "regionalization":
@@ -758,16 +776,26 @@ def select_formulation_all(
     elif config.general.approach_calib_basins == "summary_score":
         # select formulations for donor gages based on the summary scores and costs
         df_selected_donors = select_formulation_donors_only(
-            config, df_score, cost_dict=cost_dict
+            config, vpu, df_score, cost_dict=cost_dict
         )
 
-        # replace the formulation for donors in df_selected with the one from df_selected_donors
-        form_map = df_selected_donors.drop_duplicates(divide_id_col).set_index(
-            divide_id_col
-        )["formulation"]
-        df_selected.loc[:, "formulation"] = (
-            df_selected[divide_id_col].map(form_map).fillna(df_selected["formulation"])
-        )
+        if df_selected.empty:
+            df_selected = df_selected_donors.copy()
+        else:
+            # replace the formulation for donors in df_selected with the one from df_selected_donors
+            # first ensure unique mapping from donors
+            df_donors_unique = df_selected_donors.drop_duplicates(div_col).set_index(
+                div_col
+            )
+
+            # align df_selected on the same index
+            df_selected = df_selected.set_index(div_col)
+
+            # update entire rows where keys match
+            df_selected.update(df_donors_unique)
+
+            # restore index
+            df_selected = df_selected.reset_index()
     else:
         msg = (
             f"Unknown approach for assigning formulations to calibrated basins: "
@@ -799,35 +827,35 @@ def check_gage_formulation_uniqueness(
 
     """
     # get formulation selected for each donor gage
-    gage_id_col = getattr(config.general.id_col, "gage", "gage_id")
-    divide_id_col = getattr(config.general.id_col, "divide", "divide_id")
+    gage_col = getattr(config.general.id_col, "gage", "gage_id")
+    div_col = getattr(config.general.id_col, "divide", "div_id")
     df_cwt = read_table(
         config.general.gage_divide_cwt_file,
-        dtype={gage_id_col: "str", divide_id_col: "str"},
+        dtype={gage_col: "str", div_col: "str"},
     )
-    df_cwt = df_cwt[[gage_id_col, divide_id_col]].drop_duplicates()
-    df_form_gage = df_form[[divide_id_col, "formulation"]].drop_duplicates()
+    df_cwt = df_cwt[[gage_col, div_col]].drop_duplicates()
+    df_form_gage = df_form[[div_col, "formulation"]].drop_duplicates()
     df_form_gage = df_cwt.merge(
         df_form_gage,
-        on=divide_id_col,
+        on=div_col,
         how="inner",
     )
 
     # check if any gage is associated with multiple formulations
     df_count = (
-        df_form_gage[[gage_id_col, "formulation"]]
+        df_form_gage[[gage_col, "formulation"]]
         .drop_duplicates()
-        .groupby(gage_id_col)
+        .groupby(gage_col)
         .size()
         .reset_index(name="count")
         .sort_values(by="count", ascending=False)
     )
-    gages = df_count[df_count["count"] > 1][gage_id_col].tolist()
+    gages = df_count[df_count["count"] > 1][gage_col].tolist()
 
     # loop through gages associated with multiple formulations to reassign them to
     # the most frequent formulation for both df_form_gage and df_form
     for gage in gages:
-        df1 = df_form_gage.loc[df_form_gage[gage_id_col] == gage].sort_values(
+        df1 = df_form_gage.loc[df_form_gage[gage_col] == gage].sort_values(
             by="formulation"
         )
         df_count = (
@@ -841,15 +869,11 @@ def check_gage_formulation_uniqueness(
             f"Gage {gage} is associated with multiple formulations, "
             f"reassigning to the most frequent formulation {most_freq_form}"
         )
-        df_form_gage.loc[df_form_gage[gage_id_col] == gage, "formulation"] = (
-            most_freq_form
-        )
-        df_form.loc[df_form[divide_id_col].isin(df1[divide_id_col]), "formulation"] = (
-            most_freq_form
-        )
+        df_form_gage.loc[df_form_gage[gage_col] == gage, "formulation"] = most_freq_form
+        df_form.loc[df_form[div_col].isin(df1[div_col]), "formulation"] = most_freq_form
 
     # ensure no duplicate rows in df_form_gage
-    df_form_gage = df_form_gage[[gage_id_col, "formulation"]].drop_duplicates()
+    df_form_gage = df_form_gage[[gage_col, "formulation"]].drop_duplicates()
 
     return df_form_gage, df_form
 
@@ -880,10 +904,10 @@ def save_formulation_results(
         )
 
     # merge with calibration parameter file to get parameters for each gage
-    gage_id_col = getattr(config.general.id_col, "gage", "gage_id")
-    df_pars = read_table(config.general.calib_param_file, dtype={gage_id_col: "str"})
+    gage_col = getattr(config.general.id_col, "gage", "gage_id")
+    df_pars = read_table(config.general.calib_param_file, dtype={gage_col: "str"})
     df_pars = df_form_gage.merge(
-        df_pars, on=[gage_id_col, "formulation"], how="inner"
+        df_pars, on=[gage_col, "formulation"], how="inner"
     ).drop_duplicates()
 
     # save the parameters for each gage to the output file
@@ -919,15 +943,15 @@ def plot_formulation_results(
     if cc is None:
         return
 
-    divide_id_col = getattr(config.general.id_col, "divide", "divide_id")
+    div_col = getattr(config.general.id_col, "divide", "div_id")
     score_method = config.spatial_unit.best_formulation.method.lower()
     if any(cc.plots.values()):
         # get geometry for divides if spatial map is enabled
         if cc.plots.get("spatial_map", False):
             # merge the geometry with the selected formulations
             df_selected = df_selected.merge(
-                gdf_vpu[[divide_id_col, "geometry"]].drop_duplicates(),
-                on=divide_id_col,
+                gdf_vpu[[div_col, "geometry"]].drop_duplicates(),
+                on=div_col,
                 how="right",
             )
 
@@ -946,7 +970,6 @@ def plot_formulation_results(
             "vpu": vpu,
             "var_str": "Formulation Selection",
             "columns": columns_to_plot,
-            "ncols": 3,
         }
         cc.plot_data(df_selected, plot_dict)
 
@@ -980,7 +1003,9 @@ def select_formulation(
 
     if config.general.calib_basins_only:
         # select formulations for donor basins only
-        df_formulation = select_formulation_donors_only(config, df_score, cost_dict)
+        df_formulation = select_formulation_donors_only(
+            config, vpu, df_score, cost_dict
+        )
     else:
         # select formulations for all catchments in the VPU
         df_formulation = select_formulation_all(
@@ -991,11 +1016,11 @@ def select_formulation(
     df_formulation["vpu"] = vpu
 
     # rearrange the columns in the formulation DataFrame
-    divide_id_col = getattr(config.general.id_col, "divide", "divide_id")
+    div_col = getattr(config.general.id_col, "divide", "div_id")
     score_method = config.spatial_unit.best_formulation.method.lower()
     columns = [
         "vpu",
-        divide_id_col,
+        div_col,
         "formulation",
         "huc_id",
         score_method,
@@ -1010,6 +1035,7 @@ def select_formulation(
     df_formulation = df_formulation.reindex(
         columns=[c for c in output_columns if c in df_formulation.columns]
     )
+    df_formulation[div_col] = df_formulation[div_col].astype("string")
 
     # check that each gage has a unique formulation assigned
     df_form_gage, df_formulation = check_gage_formulation_uniqueness(

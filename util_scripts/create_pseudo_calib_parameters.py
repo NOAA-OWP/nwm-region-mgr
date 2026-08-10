@@ -85,9 +85,10 @@ def process_domain(
 
 
 if __name__ == "__main__":
-    domains = ["conus", "ak", "hi", "prvi"]
-    bounds_dir = "/home/yuqiong.liu/data/calib_params_tab_delimited"  # parameter bounds
-    data_dir = Path("/home/yuqiong.liu/repos/nwm-region-mgr/data/inputs/")
+    # domains = ["conus", "ak", "hi", "prvi"]
+    domains = ["conus"]  # for testing
+    bounds_dir = Path("~/data/calib_params_tab_delimited").expanduser()
+    data_dir = Path("~/repos/nwm-region-mgr/data/inputs/region/").expanduser()
     in_dir = data_dir / "calval_stats"
     out_dir = data_dir / "pseudo_calib_params"
     file_ext = ".csv"  # output file extension: .csv or .parquet

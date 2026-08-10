@@ -1,7 +1,7 @@
 """Function to create donor-receiver pairs using distance methods.
 
 This function performs donor-receiver pairing using either Gower's distance (method = "gower") or
-  the distance computed by unsupervised random forest classification (method = "urf")
+the distance computed by unsupervised random forest classification (method = "urf")
 
 """
 
@@ -34,13 +34,13 @@ class DistancePairer(Pairer):
     def get_receivers_to_process(self, processed_receivers_df: pd.DataFrame) -> list:
         """Receivers that still need to be processed."""
         # check if donors are identified for all receivers
-        recs = self.df_attr_all[~self.df_attr_all["is_donor"]]["divide_id"].values
+        recs = self.df_attr_all[~self.df_attr_all["is_donor"]][self.div_col].values
         # logger.info(f"Number of already processed receivers: {len(processed_receivers_df)}")
         if len(processed_receivers_df) > 0:
             return [
                 value
                 for value in recs
-                if value not in processed_receivers_df["divide_id"].values
+                if value not in processed_receivers_df[self.div_col].values
             ]
         else:
             return recs
@@ -50,14 +50,14 @@ class DistancePairer(Pairer):
     ) -> list:
         """Get all donors in the same snow category as the receiver."""
         snow_category_of_receiver = df_attr_for_round.loc[
-            (df_attr_for_round["divide_id"] == receiver)
+            (df_attr_for_round[self.div_col] == receiver)
             & (~df_attr_for_round["is_donor"]),
             "snowy",
         ]
         return df_attr_for_round[
             (df_attr_for_round["is_donor"])
             & (df_attr_for_round["snowy"] == snow_category_of_receiver.iloc[0])
-        ]["divide_id"].to_list()
+        ][self.div_col].to_list()
 
     def apply_constraints(
         self,
@@ -233,10 +233,10 @@ class DistancePairer(Pairer):
                 )
                 # donors and receivers for this round
                 donors_for_round = df_attr_for_round[df_attr_for_round["is_donor"]][
-                    "divide_id"
+                    self.div_col
                 ].tolist()
                 receivers_for_round = df_attr_for_round[~df_attr_for_round["is_donor"]][
-                    "divide_id"
+                    self.div_col
                 ].tolist()
 
                 # apply principal component analysis and compute distances
@@ -315,10 +315,14 @@ class GowerPairer(DistancePairer):
 
         range_of_reduced_attr = df_attr_reduced.max() - df_attr_reduced.min()
         range_array = np.repeat(
-            np.matrix(range_of_reduced_attr), number_of_receivers, axis=0
+            np.array(range_of_reduced_attr)[None, :],
+            number_of_receivers,
+            axis=0,
         )
 
-        weights_array = np.repeat(np.matrix(weights), number_of_receivers, axis=0)
+        weights_array = np.repeat(
+            np.array(weights)[None, :], number_of_receivers, axis=0
+        )
 
         df_attr_reduced_receiver = df_attr_reduced.iloc[number_of_donors:]
 
@@ -351,7 +355,9 @@ class GowerPairer(DistancePairer):
     ):
         """Calculate Gower's distance between donors and receivers (to be used in parallel computing)."""
         scores_donor = np.repeat(
-            np.matrix(df_attr_reduced.iloc[i]), number_of_receivers, axis=0
+            np.array(df_attr_reduced.iloc[i])[None, :],
+            number_of_receivers,
+            axis=0,
         )
         return (
             (scores_donor - df_attr_reduced_receiver).abs()
@@ -423,12 +429,12 @@ class ProximityPairer(Pairer):
     @property
     def recs0(self):
         """Receivers."""
-        return self.df_attr_all[~self.df_attr_all["is_donor"]]["divide_id"].tolist()
+        return self.df_attr_all[~self.df_attr_all["is_donor"]][self.div_col].tolist()
 
     @property
     def donors0(self):
         """Donors."""
-        return self.df_attr_all[self.df_attr_all["is_donor"]]["divide_id"].tolist()
+        return self.df_attr_all[self.df_attr_all["is_donor"]][self.div_col].tolist()
 
     def pair(self, donors=None, receivers=None):
         """Perform donor-receiver pairing using proximity."""

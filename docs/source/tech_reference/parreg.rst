@@ -8,7 +8,7 @@ The parameter regionalization process assigns pairs of divides as donors and rec
 divides. Receiver divides are uncalibrated divides that will have parameters assigned to them from their donor. Donor
 receiver pairings are assigned based on the proximity of divides in both spatial and physiographic parameter space.
 Several methods are provided for pairing, including clustering methods (kmeans, kmedoids, HDBSCAN, URF), distance
-methods (Gower, URF), and spatial proximity methods. Typically, spatial proximity is used as a fallback method for
+methods (Gower, URF), and spatial proximity. Typically, spatial proximity is used as a fallback method for
 any unpaired receivers after the main pairing (clustering or distance) method is applied.
 
 **Required input:**
@@ -30,14 +30,16 @@ Process
 
    **Figure 1.** Example of donor catchments (colors) and receiver catchments (translucent).
 
-1. Parameter regionalization begins with data validation. The attribute and spatial distance datasets are checked to
-   make sure that all donors and receivers in each VPU are present. The percent nan values in the attribute dataset are
-   recorded. See example plot at :ref:`missing_attribute_barchart`.
+1. Parameter regionalization begins with identifying valid donors in the VPU, based on the calibration metrics file 
+   defined by ``general.calval_stats_file`` in ``config_general.yaml``, and the donor selection/screening criteria defined 
+   in the ``donor`` section in ``config_parreg.yaml``. In addition, the attribute datasets are checked to assess if all donors 
+   and receivers in each VPU are present. The percent nan values in the attribute dataset are recorded. See example 
+   plot at :ref:`missing_attribute_barchart`.
 
 2. All primary attributes, as selected with ``attr_list`` or ``attr_select_file`` for each dataset specified in the
-   configuration, are used to calculate catchment similarity when pairing receivers with donors. For distance-based
+   ``config_parreg.yaml``, are used to calculate catchment similarity when pairing receivers with donors. For distance-based
    methods, if some receivers remain unpaired after the first pass using a full attribute set, a second pass is
-   performed using a reduced set of attributes defined by ``base_attr_list`` for each dataset in the config_parreg.yaml.
+   performed using a reduced set of attributes defined by ``base_attr_list`` in ``config_parreg.yaml``.
 
 3. For each formulation:
 
@@ -47,7 +49,7 @@ Process
 
    * Similarly, receivers are grouped into snowy and non-snowy cohorts. Snowy receivers are paired only with snowy
      donors, and non-snowy receivers only with non-snowy donors. The snowy/non-snowy classification is determined by
-     the ``snow_cover`` settings in config_parreg.yaml.
+     the ``snow_cover`` settings in ``config_parreg.yaml``.
 
    * For each cohort:
 
@@ -55,15 +57,16 @@ Process
 
      * Apply a distance or clustering algorithm (see method specifics below) to assign a donor to each receiver.
 
-       * **distance methods (gower, urf)**: assign nearest donor in attribute space to each receiver
+       * **distance methods** (gower, urf): assign nearest donor in attribute space to each receiver
 
          * First pass: use all primary attributes.
          * Second pass (if needed): use only ``base attributes``.
 
-       * **clustering methods (kmeans, kmedoids, hdbscan, birch)**: using all primary attributes, assign the spatially nearest donor within the same cluster to each receiver.
+       * **clustering methods** (kmeans, kmedoids, hdbscan, birch): using all primary attributes, assign the spatially 
+         nearest donor within the same cluster to each receiver.
 
      * In addition to the final donor, up to ``n_donor_max`` closest donors are also recorded in the pair results
-        for future reference (e.g., for ensemble applications).
+       for future reference (e.g., for ensemble applications).
 
 4. Any receivers that remain unpaired after the preceding steps are assigned their nearest donor in geographic space
    using the *proximity* method.
@@ -80,6 +83,15 @@ Process
 Pairing Methods
 ----------------
 
+Currentlly a total of six main pairing methods are supported, in addition to the proximity method used as a fallback
+for any unpaired receivers after the main pairing method is applied:
+
+* **Gower** (distance-based)
+* **URF** (unsupervised random forest, distance-based)
+* **KMeans** (clustering-based)
+* **KMedoids** (clustering-based)
+* **HDBSCAN** (clustering-based)
+* **BIRCH** (clustering-based)
 
 **Distance-based methods**
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -88,7 +100,7 @@ Pairing Methods
   each receiver and all potential donors using the PCA-transformed attribute data, with weights for each principal
   component set according to the percentage of variance it explains. Each receiver is assigned the donor with
   the lowest Gower's distance. Donors are identified by iteratively searching in neighborhoods of increasing
-  radius until a candidate meeting both attribute , using all primary attributes.and spatial distance criteria is found.
+  radius until a candidate meeting both attribute and spatial distance criteria is found.
 
   * *Type*: attribute distance metric
   * *How it works*: Calculates a weighted distance between receivers and donors based on PCA-transformed attributes.
@@ -172,33 +184,6 @@ Pairing Methods
 
 * **HDBSCAN vs BIRCH**: Both hierarchical, but HDBSCAN is density-based and detects irregular clusters, while
   BIRCH is tree-based and designed for large datasets with roughly spherical clusters.
-
-Notes
------
-
-- Configuration for parameter regionalization is specified in `config_parreg.yaml`.
-
-- The python module `nwm_region_mgr.parreg` contains functions for performing parameter regionalization.
-
-- Currently, three attribute datasets are supported:
-
-  * `NextGen attributes <https://lynker-spatial.s3-us-west-2.amazonaws.com/hydrofabric/v2.2/hfv2.2-data_model.html>`_.
-  * `Hydrologic Landscape Regions (HLR) attributes <https://www.usgs.gov/publications/hydrologic-landscape-regions-united-states>`_.
-  * `StreamCat attributes <https://www.epa.gov/national-aquatic-resource-surveys/streamcat-dataset>`_.
-
-- Parameter regionalization is carried out separately for each individual VPU, to avoid potential memory issues and
-  algorithm inefficiency.
-
-- Parameter regionalization requires formulation regionalization to be completed first. Hence, for each parameter
-  regionalization run, the workflow will first check if the required outputs from formulation regionalization for
-  the relevant VPUs already exist; if not, the workflow will run formulation regionalization for the relevant VPUs before
-  proceeding with parameter regionalization.
-
-- Parameter regionalization for a given VPU may also rely on formulation-regionalization outputs from neighboring VPUs,
-  depending on whether calibration basins from those VPUs fall within the buffer distance specified in the configuration.
-
-- The algorithm generated donor-receiver pairs can be updated to incorporate specific manual pairs, if provided via
-  `manual_pairings_file` in config_general.yaml(see the corresponding section in :doc:`Input Data <input_data>` page for details).
 
 
 .. toctree::

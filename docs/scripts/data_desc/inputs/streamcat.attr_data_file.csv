@@ -1,6 +1,6 @@
 sample_file_path|inputs/region/attr_datasets/streamcat/attr_streamcat_conus.parquet
 title|File containing StreamCat attribute data for all catchments in a NWM domain (e.g., CONUS).
-divide_id|Unique identifier for each catchment.
+div_id|Unique identifier for each catchment.
 BFI|"Baseflow is the component of streamflow that can be attributed to ground-water discharge into streams. The Baseflow Index (BFI) is the ratio of baseflow to total flow, expressed as a percentage, within catchment."
 CanalDens|"Density of NHDPlus line features classified as canal, ditch, or pipeline within the catchment or watershed."
 DamDens|Density of georeferenced dams within catchment (dams/ square km) based on the National Inventory of Dams (https://catalog.data.gov/dataset/national-inventory-of-dams)

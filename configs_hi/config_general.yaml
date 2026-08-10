@@ -1,0 +1,31 @@
+# General settings for regionalization application
+# Settings here are applicable to config_formreg.yaml, config_parreg.yaml, and config_ngen.yaml (but not config_eval.yaml) 
+# and can be overridden by specific settings in each of those files as needed.
+# See instructions on configuration at: https://ngwpc.github.io/nwm-region-mgr/config_builder/index.html
+
+general:
+  run_name: test  # Name of the run, used to create output folders and files
+  domain: hi  # Define NWM domain. Supported options: conus, ak, hi, prvi
+  vpu_list: ['20'] # List of VPUs to process. Valid VPUs for conus: ['01','02','03N','03S','03W', ...,'10L','10U',..., '18']; ak: ['19']; hi: ['20']; prvi: ['21']
+  n_procs: 18  # Number of processors to use
+
+  base_dir: '${WORK_DIR}' # Path to the base directory, with WORK_DIR & REPOS_COMMON_ROOT__HOST set via docker run to the current working directory (e.g., /ngen-dev/$USER_NAME/run_region) and common NGWPC repos root (e.g.,/ngencerf-app) on host, respectively 
+  static_data_dir: '${REPOS_COMMON_ROOT__HOST}/nwm-region-mgr/data/inputs'  # Path to the static data directory (where all sample inputs for regionalization are stored) 
+  ngen_hydrofabric_file: '{static_data_dir}/region/hydrofabric/gpkg_vpu/vpu_{vpu_list}.gpkg'  # Path to the hydrofabric file 
+  gage_divide_cwt_file: '{static_data_dir}/region/cwt_divide_gage/calib_gage_divide_{domain}.parquet' # Path to the file containing the mapping of calibration gages to divides
+  donor_gage_file: '{static_data_dir}/region/gages_nwm4_calib_all.csv' # Path to the file containing the list of all calibratable headwater basins
+  calval_stats_file: '{static_data_dir}/region/calval_stats/stat_calval_all_{domain}.parquet' #Path to file where statistics from calibration and validation are stored
+  calib_param_file: '{static_data_dir}/region/pseudo_calib_params/sampled_params_{domain}.csv' # Path to file containing calibration parameters for all gages in the domain
+  approach_calib_basins: summary_score  # Strategy for assigning formulations and parameters to calibrated basins: regionalization or summary_score
+  
+  id_col: # case-insensitive column names for different spatial units across all applicable files
+    divide: div_id  # Name of column for catchment ID in all files
+    gage: gage_id  # Name of column for calibration basin ID in all files
+    huc12: huc_12  # Name of column for HUC12 ID in all files ("huc_12"for non-AK domains, "huc12" for AK)
+    vpu: vpu_id  # Name of column for VPU ID in all files
+    donor: donor  # Name of column for donor basin ID in all files
+    drainage_area: area_sqkm  # Name of column for catchment drainage area in all files
+
+  layer_name: # Define the layer to be used in the corresponding hydrofabric file
+    ngen: divides
+    huc12: WBDSnapshot_National # for non-AK VPUs (for AK: use "WBDHU12")

@@ -169,21 +169,19 @@ def formulation_summary_score(
     return df
 
 
-def _compute_summary_score_all_gages(
-    config: cs.Config, gage_id_col: str
-) -> pd.DataFrame:
+def _compute_summary_score_all_gages(config: cs.Config, gage_col: str) -> pd.DataFrame:
     """Compute summary scores for all gages in the domain.
 
     Args:
         config: The configuration object.
-        gage_id_col: The gage ID column name.
+        gage_col: The gage ID column name.
 
     Returns:
         pd.DataFrame: DataFrame containing summary scores for all gages in the domain.
 
     """
     # read statistics (all gages and all formulations)
-    df_stats = read_table(config.general.calval_stats_file, dtype={gage_id_col: str})
+    df_stats = read_table(config.general.calval_stats_file, dtype={gage_col: str})
 
     # narrow down to the evaluation period (case-insensitive)
     ss = config.summary_score
@@ -192,7 +190,7 @@ def _compute_summary_score_all_gages(
 
     # keep only the required columns
     required_columns = [
-        gage_id_col,
+        gage_col,
         "formulation",
         ss.metric_eval_period.col_name,
     ] + list(ss.metrics.keys())
@@ -201,11 +199,11 @@ def _compute_summary_score_all_gages(
     if not df_stats.empty:
         # compute the summary score for the formulation
         df_score = formulation_summary_score(df_stats, ss.metrics)
-        df_score = df_score[[gage_id_col, "formulation", "summary_score"]].copy()
+        df_score = df_score[[gage_col, "formulation", "summary_score"]].copy()
 
     # remove duplicated rows
     df_score = df_score.drop_duplicates(
-        subset=[gage_id_col, "formulation", "summary_score"]
+        subset=[gage_col, "formulation", "summary_score"]
     )
 
     # remove rows with NaN summary scores
@@ -234,9 +232,9 @@ def compute_summary_score(config: cs.Config, vpu: str) -> None:
     """
     # Get the VPU ID column name
     id_cols = config.general.id_col
-    gage_id_col = getattr(id_cols, "gage", "gage_id")
-    divide_id_col = getattr(id_cols, "divide", "divide_id")
-    vpu_id_col = getattr(id_cols, "vpu", "vpuid")
+    gage_col = getattr(id_cols, "gage", "gage_id")
+    div_col = getattr(id_cols, "divide", "div_id")
+    vpu_col = getattr(id_cols, "vpu", "vpu_id")
 
     cc = getattr(config.output, "summary_score", None)
     if cc is None:
@@ -246,29 +244,27 @@ def compute_summary_score(config: cs.Config, vpu: str) -> None:
 
     # compute summary scores for all gages in the domain only if this is the first VPU
     if not filepath.exists():
-        df_score_all = _compute_summary_score_all_gages(config, gage_id_col)
+        df_score_all = _compute_summary_score_all_gages(config, gage_col)
     else:
         # read the summary score DataFrame for all gages in the domain
         df_score_all = cc.read_from_file(
             vpu=None,
             use_stem_suffix=True,
             data_str="Summary Score (for all gages)",
-            data_type={vpu_id_col: str, divide_id_col: str, gage_id_col: str},
+            data_type={vpu_col: str, div_col: str, gage_col: str},
         )
 
     # get VPU from gage_divide crosswalk file
     cwt_file = Path(config.general.gage_divide_cwt_file)
-    df_cwt = read_table(
-        cwt_file, dtype={gage_id_col: str, divide_id_col: str, vpu_id_col: str}
-    )
+    df_cwt = read_table(cwt_file, dtype={gage_col: str, div_col: str, vpu_col: str})
     df_score_vpu = df_score_all.merge(
-        df_cwt[[gage_id_col, divide_id_col, vpu_id_col]],
-        on=gage_id_col,
+        df_cwt[[gage_col, div_col, vpu_col]],
+        on=gage_col,
         how="left",
     )
 
     # narrow down to the VPU
-    df_score_vpu = df_score_vpu[df_score_vpu[vpu_id_col] == vpu].copy()
+    df_score_vpu = df_score_vpu[df_score_vpu[vpu_col] == vpu].copy()
 
     if df_score_vpu.empty:
         msg = (
@@ -277,14 +273,12 @@ def compute_summary_score(config: cs.Config, vpu: str) -> None:
         logger.error(msg)
         raise ValueError(msg)
 
-    # drop vpu_id_col and divide_id_col
-    df_score_vpu = df_score_vpu.drop(
-        columns=[vpu_id_col, divide_id_col], errors="ignore"
-    )
+    # drop vpu_col and div_col
+    df_score_vpu = df_score_vpu.drop(columns=[vpu_col, div_col], errors="ignore")
 
     # remove duplicated rows
     df_score_vpu = df_score_vpu.drop_duplicates(
-        subset=[gage_id_col, "formulation", "summary_score"]
+        subset=[gage_col, "formulation", "summary_score"]
     )
 
     # Save the summary score DataFrame for the specific VPU
@@ -301,7 +295,7 @@ def compute_summary_score(config: cs.Config, vpu: str) -> None:
     if cc is not None and any(cc.plots.values()):
         # create wide-format DataFrame for plotting
         df_score_wide = df_score_vpu.pivot(
-            index=gage_id_col, columns="formulation", values="summary_score"
+            index=gage_col, columns="formulation", values="summary_score"
         ).reset_index()
         df_score_wide.columns.name = None
 
@@ -313,7 +307,7 @@ def compute_summary_score(config: cs.Config, vpu: str) -> None:
                     f"Crosswalk file {cwt_file} does not exist. Skipping spatial map plot."
                 )
                 return
-            cwt_df = read_table(cwt_file, dtype={gage_id_col: str, divide_id_col: str})
+            cwt_df = read_table(cwt_file, dtype={gage_col: str, div_col: str})
             if cwt_df.empty:
                 logger.warning(
                     f"Crosswalk file {cwt_file} is empty. Skipping spatial map plot."
@@ -321,8 +315,8 @@ def compute_summary_score(config: cs.Config, vpu: str) -> None:
                 return
             # merge with summary score DataFrame
             df_score_wide = df_score_wide.merge(
-                cwt_df[[gage_id_col, divide_id_col]],
-                on=gage_id_col,
+                cwt_df[[gage_col, div_col]],
+                on=gage_col,
                 how="left",
             )
             # read the geometry file
@@ -330,8 +324,10 @@ def compute_summary_score(config: cs.Config, vpu: str) -> None:
             gdf = gpd.read_file(geo_file, layer=config.general.layer_name.ngen)
 
             # merge geometry with summary score DataFrame
+            df_score_wide[div_col] = df_score_wide[div_col].astype("string")
+            gdf[div_col] = gdf[div_col].astype("string")
             df_score_wide = df_score_wide.merge(
-                gdf[[divide_id_col, "geometry"]], on=divide_id_col, how="right"
+                gdf[[div_col, "geometry"]], on=div_col, how="right"
             )
             df_score_wide = gpd.GeoDataFrame(
                 df_score_wide, geometry="geometry", crs=gdf.crs
@@ -342,7 +338,6 @@ def compute_summary_score(config: cs.Config, vpu: str) -> None:
             "vpu": vpu,
             "var_str": "Summary Score",
             "columns": df_score_vpu["formulation"].unique().tolist(),
-            "ncols": 3,
         }
         cc.plot_data(df_score_wide, plot_dict)
 
