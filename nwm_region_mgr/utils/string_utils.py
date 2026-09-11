@@ -3,7 +3,7 @@
 string_utils.py
 
 Functions:
-    - expand_with_vpu: Expand a string with {vpu_list} placeholders using a list of VPU codes from the context.
+    - expand_with_lists: Expand a string with list placeholders using Cartesian product.
     - recursive_substitute: Recursively substitute placeholders in a Pydantic model, dictionary, or string.
 
 """

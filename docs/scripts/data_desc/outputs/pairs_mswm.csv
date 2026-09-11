@@ -1,4 +1,4 @@
-sample_file_path|outputs/region/pairs/pairs_kmeans_conus_vpu03S_mswm.csv 
+sample_file_path|outputs/region/test/pairs/pairs_kmeans_conus_vpu03S_mswm.csv 
 title|Receiver-donor pairs generated from parameter regionalization to be used by MSWM.
 gage_id|Unique identifier for each donor basin.
-divide_id|Unique identifier for each receiver catchment in the VPU.
+div_id|Unique identifier for each receiver catchment in the VPU.

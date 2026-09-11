@@ -356,7 +356,7 @@ class FormulationOutputConfig(BaseModel):
         examples={
             "save": True,
             "path": "{base_dir}/outputs/{run_name}/formulations",
-            "stem": "form_{domain}_vpu{vpu_list}",
+            "stem": "form_{domain}_vpu{vpu}",
             "stem_suffix": "_pars",  # suffix for the formulation file with parameters
             "format": "parquet",
             "plots": {
@@ -382,7 +382,7 @@ class FormulationOutputConfig(BaseModel):
         examples={
             "save": True,
             "path": "{base_dir}/outputs/{run_name}/summary_score",
-            "stem": "score_{domain}_vpu{vpu_list}",
+            "stem": "score_{domain}_vpu{vpu}",
             "stem_suffix": "_all_gages",  # suffix for the summary score file containing all gages in the domain
             "format": "parquet",
             "plots": {"histogram": True, "spatial_map": True},

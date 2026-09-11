@@ -88,16 +88,14 @@ def generate_md(bucket, prefix, comments, max_depth=None):
 
 
 if __name__ == "__main__":
-    import argparse
-
     parser = argparse.ArgumentParser()
     parser.add_argument("--bucket", default="noaa-owp-dev", help="S3 bucket name")
     parser.add_argument(
         "--prefixes",
         nargs="*",
         default=[
-            "regionalization/data/inputs/",
-            "regionalization/data/outputs/",
+            "nwm-tools-data/regionalization/data/inputs/",
+            "nwm-tools-data/regionalization/data/outputs/",
         ],
         help="S3 prefixes to include",
     )
@@ -130,11 +128,21 @@ if __name__ == "__main__":
         # Add header
         header_str = "Input" if "inputs" in prefix.lower() else "Output"
         header = f"## {header_str} Directory Structure\n\n"
-        desc = (
+
+        # Add description based on whether it's input or output
+        desc_input = (
+            f"The {header_str.lower()} directory contains three subdirectories: `region` and `eval`, "
+            f"which store the respective {header_str.lower()} files for the regionalization and "
+            f"evaluation steps. Note that the ngen simulation step does not require input files from this directory.\n\n"
+        )
+
+        desc_output = (
             f"The {header_str.lower()} directory contains three subdirectories: `region`, `ngen`, and `eval`, "
             f"which store the respective {header_str.lower()} files for the regionalization, ngen simulation, and "
             f"evaluation steps.\n\n"
         )
+
+        desc = desc_input if "inputs" in prefix.lower() else desc_output
         with open(file_path, "w", encoding="utf-8") as f:
             f.write(header + desc + md_content)
 

@@ -1,6 +1,6 @@
-sample_file_path|inputs/region/manual_pairs/manual_pairs_vpu03S.csv
+sample_file_path|inputs/region/manual_pairs/manual_pairs_vpu03S_nhf.csv
 title|File containing manual pairings to update algorithm based donor-receiver pairs.
-receiver_divide_id|Unique identifier for the receiver catchment (i.e., divide).
-donor_divide_id|Unique identifier for the donor catchment (i.e., divide).
+receiver_div_id|Unique identifier for the receiver catchment (i.e., divide).
+donor_div_id|Unique identifier for the donor catchment (i.e., divide).
 receiver_gage_id|Unique identifier for the receiver gage.
 donor_gage_id|Unique identifier for the donor gage.

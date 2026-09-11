@@ -2,12 +2,12 @@
 general:
   attr_dataset_list: ['ngen','hydroatlas'] # list of attribute datasets. Supported options: 'ngen', 'hlr', 'streamcat', 'hydroatlas'.
   algorithm_list: ['kmeans']  # list of algorithms to use for parameter regionalization. Supported options: 'gower', 'urf', 'kmeans', 'kmedoids', 'hdbscan', 'birch', 'proximity'. 
-  #manual_pairings_file: '{static_data_dir}/region/manual_pairs/manual_pairs_vpu{vpu_list}_nhf.csv'  # path to the manual pairings file; if specified, the manual pairings will override the algorithm-based pairings
+  manual_pairings_file: '{static_data_dir}/region/manual_pairs/manual_pairs_vpu{vpu}_nhf.csv'  # path to the manual pairings file; if specified, the manual pairings will override the algorithm-based pairings
 
   logging: # define logging configurations
     level: info  # logging level, options: debug, info, warning, error, critical
     log_to_file: True  # whether to log to a file
-    file: '{base_dir}/outputs/region/{run_name}/parreg_{domain}.log'
+    file: '{base_dir}/outputs/region/{run_name}/parreg_{domain}_vpu{vpu}.log'
     
 donor:
   buffer_km: 0
@@ -57,7 +57,7 @@ output:
     pairs:
       save: True
       path: '{base_dir}/outputs/region/{run_name}/pairs'
-      stem: 'pairs_{algorithm_list}_{domain}_vpu{vpu_list}'
+      stem: 'pairs_{algorithm_list}_{domain}_vpu{vpu}'
       stem_suffix: '_mswm'  # suffix for the pairs file to be used by MSWM
       format: 'parquet'
       plots:
@@ -67,7 +67,7 @@ output:
     params:
       save: True
       path: '{base_dir}/outputs/region/{run_name}/params'
-      stem: 'formulation_params_{algorithm_list}_{domain}_vpu{vpu_list}'
+      stem: 'formulation_params_{algorithm_list}_{domain}_vpu{vpu}'
       format: 'csv'
       plots:
         spatial_map: True
@@ -75,7 +75,7 @@ output:
     attr_data_final:
       save: True
       path: '{base_dir}/outputs/region/{run_name}/attr_data_final'
-      stem: 'attr_{domain}_vpu{vpu_list}'
+      stem: 'attr_{domain}_vpu{vpu}'
       format: 'parquet'
       plots:
         spatial_map: True
@@ -84,7 +84,7 @@ output:
     config_final:
       save: True
       path: '{base_dir}/outputs/region/{run_name}'
-      stem: 'config_parreg_final_{domain}_vpu{vpu_list}'
+      stem: 'config_parreg_final_{domain}_vpu{vpu}'
       format: yaml
     spatial_distance:
       save: True

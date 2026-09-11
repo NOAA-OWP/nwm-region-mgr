@@ -29,14 +29,14 @@ These are general settings for the formulation regionalization application.
                   required>
       </form-field>
 
-      <form-field label="VPUs to process"
-                  name="vpu_list"
+      <form-field label="VPU to process"
+                  name="vpu"
                   type="select"
                   options="01, 02, 03N, 03S, 03W, 04, 05, 06, 07, 08, 09, 10L, 10U, 11, 12, 13, 14, 15, 16, 17, 18"
                   data-default="01"
-                  tooltip="List of VPUs to process"
-                  data-yaml="general.vpu_list"
-                  multiple>
+                  tooltip="VPU to process"
+                  data-yaml="general.vpu"
+                  required>
       </form-field>
 
       <form-field label="Base directory"
@@ -50,7 +50,7 @@ These are general settings for the formulation regionalization application.
       <form-field label="NextGen hydrofabric file"
                   name="ngen_hydrofabric_file"
                   type="text"
-                  placeholder="{base_dir}/inputs/region/hydrofabric/vpu_divides/vpu_{vpu_list}.gpkg"
+                  placeholder="{base_dir}/inputs/region/hydrofabric/vpu_divides/vpu_{vpu}.gpkg"
                   tooltip="Path to hydrofabric geopackage file"
                   data-yaml="general.ngen_hydrofabric_file">
       </form-field>

@@ -128,7 +128,7 @@ cp -r configs/ test1_configs/
 ```
 
 #### 0.1 Update `test1_configs/config_general.yaml`
- - Set **general.vpu_list** to ['09']
+ - Set **general.vpu** to '09'
  - Set **general.run_name** to a new name: *test1*. This will be used to name the output folder for this experiment
   (e.g., `outputs/region/test1/`)
 
@@ -470,11 +470,8 @@ Check the header of the script for usage instructions.
   - **conus**: `configs`
   - **hi**: `configs_hi`
   - **prvi**: `configs_prvi`
-
-  ```{warning}
-  The Alaska domain is currently not supported for regionalization base on NHF (NGWPC Hydrofabric) because the hydrofabric
-  is yet to be finalized for the AK domain. Once the hydrofabric is finalized, the input datasets can be updated accordingly to support regionalization in the AK domain.
-  ```
+  - **ak**: `configs_ak`
+s
 
 #### Valid VPUs for each domain
   - CONUS: 21 VPUs (01, 02, 03S, 03N, 03W, 04, 05, 06, 07, 08, 09, 10L, 10U, 11, 12, 13, 14, 15, 16, 17, 18)
@@ -503,7 +500,7 @@ Check the header of the script for usage instructions.
   * ngen (hydrofabric): all domains
   * HLR: CONUS, AK, HI
   * StreamCat: CONUS only
-  * HydroATLAS: CONUS, AK, PRVI (only available for NHF)
+  * HydroATLAS: CONUS, AK, PRVI
 
 #### Snow basin categorization
 
@@ -545,6 +542,20 @@ Check the header of the script for usage instructions.
 
   Note this will delete the entire runtime folder containing the detailed log files, which may be useful for debugging if 
   any issues arise during the run. 
+
+### Assemble domain results
+
+  After running regionalization for all VPUs in the CONUS domain, the metric results can be assembled to create 
+  evaluation plots for the entire domain. This is done by a single run of the `eval` step with 
+  the following updates to the `config_eval.yaml` file:
+  - Set **general.assemble_domain** to `true`
+  - Set **general.location_set_name** to `conus`
+  - Make sure **general.steps.compute_metrics** and **general.steps.plot_metrics** are set to `true` 
+
+  The run will look for the existing metric results file for each VPU in the CONUS domain (e.g., `outputs/eval/vpu_03S/metrics/test_kmeans.ngen.ngen_simulation.metrics.parquet`, `outputs/eval/vpu_03N/metrics/test_kmeans.ngen.ngen_simulation.metrics.parquet`), and assemble them into a single metrics file for the entire domain (e.g., `outputs/eval/conus/metrics/test_kmeans.ngen.ngen_simulation.metrics.parquet`).
+
+  Then, the evaluation plots for the entire domain (excluding VPUs without existing metric files) will be generated based on the assembled metrics file, and saved in the folder `outputs/eval/conus/plots/ngen_simulation/`.
+
 
 ### Manual pairings
 

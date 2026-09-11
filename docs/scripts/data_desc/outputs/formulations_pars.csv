@@ -1,4 +1,4 @@
-sample_file_path|outputs/region/formulations/form_conus_vpu03S_pars.parquet
+sample_file_path|outputs/region/test/formulations/form_conus_vpu03S_pars.parquet
 title|Formulations selected for each calibration basin from formulation regionalization.
 gage_id|Unique identifier for each calibration basin.
 formulation|Formulation assigned to the calibration basin. Modules within the formulation are separated by commas.

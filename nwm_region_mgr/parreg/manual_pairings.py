@@ -28,11 +28,7 @@ class ManualPairer:
     @property
     def manual_pairings_file(self) -> Path:
         """Path to the manual pairings file."""
-        files = getattr(self.config.general, "manual_pairings_file", None)
-        if files is None:
-            return None
-
-        return files[self.vpu]
+        return getattr(self.config.general, "manual_pairings_file", None)
 
     @property
     def divide_col(self):
@@ -392,30 +388,26 @@ class ManualPairer:
         )
 
     def get_pairs_output_file(
-        self, vpu: str, algorithm: str, use_stem_suffix: bool = False
+        self, algorithm: str, use_stem_suffix: bool = False
     ) -> Path:
-        """Construct the path to the regionalization output file for a given VPU."""
+        """Construct the path to the regionalization output file."""
         out = getattr(self.config.output, "pairs", None)
         if out is None:
             msg = "Output configuration for 'pairs' is not defined."
             logger.error(msg)
             raise ValueError(msg)
-        return out.get_file_path(
-            vpu=vpu, algorithm=algorithm, use_stem_suffix=use_stem_suffix
-        )
+        return out.get_file_path(algorithm=algorithm, use_stem_suffix=use_stem_suffix)
 
     def get_param_output_file(
-        self, vpu: str, algorithm: str, use_stem_suffix: bool = False
+        self, algorithm: str, use_stem_suffix: bool = False
     ) -> Path:
-        """Construct the path to the parameter output file for a given VPU."""
+        """Construct the path to the parameter output file."""
         out = getattr(self.config.output, "params", None)
         if out is None:
             msg = "Output configuration for 'params' is not defined."
             logger.error(msg)
             raise ValueError(msg)
-        return out.get_file_path(
-            vpu=vpu, algorithm=algorithm, use_stem_suffix=use_stem_suffix
-        )
+        return out.get_file_path(algorithm=algorithm, use_stem_suffix=use_stem_suffix)
 
     def create_backup_pair_param_files(
         self,
@@ -428,11 +420,11 @@ class ManualPairer:
         The backup files will have the same name with '_original' added to the stem.
 
         """
-        pairs_file = self.get_pairs_output_file(vpu, algorithm)
+        pairs_file = self.get_pairs_output_file(algorithm)
         mswm_pairs_file = self.get_pairs_output_file(
-            vpu=vpu, algorithm=algorithm, use_stem_suffix=True
+            algorithm=algorithm, use_stem_suffix=True
         ).with_suffix(".csv")  # MSWM pairs file is in csv format
-        params_output_file = self.get_param_output_file(vpu, algorithm)
+        params_output_file = self.get_param_output_file(algorithm)
 
         def backup_file(file: Path) -> None:
             if not file.exists():
@@ -496,7 +488,7 @@ class ManualPairer:
 
             # read in the regionalization output file and update with manual pairings
             df_updated = self.update_pairings(
-                self.get_pairs_output_file(vpu, algorithm), df_manual
+                self.get_pairs_output_file(algorithm), df_manual
             )
 
             # keep a backup of the original regionalization output files before overwriting with manual pairings

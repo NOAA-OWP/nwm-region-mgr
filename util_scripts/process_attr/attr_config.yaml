@@ -1,15 +1,15 @@
-hf_version: nhf  # options: nhf, v2.2
-domain: conus
-attr_dataset: streamcat # options: hlr, ngen, streamcat, hydroatlas
+hf_version: nhf_1.2.2  # options: nhf, v2.2
+domain: conus  # options: conus, ak, hi, prvi
+attr_dataset: hydroatlas # options: hlr, ngen, streamcat, hydroatlas
 attr_list: 
 overlap_threshold_max: 0.99
 overlap_threshold_min: 0.2
 base_dir: ~/data/region_input/{hf_version}
-gpkg_dir: ~/data/hydrofabric/gpkg_{hf_version}
+gpkg_dir: ~/repos/nwm-region-mgr/data/inputs/region/hydrofabric/gpkg_vpu
 cwt_file: '{base_dir}/cwt_ngen_{attr_dataset}/cwt_ngen_{attr_dataset}_{domain}.parquet'
 attr_file: '{base_dir}/attr_datasets/{attr_dataset}/attr_{attr_dataset}_{domain}.parquet'
-process_cwt: false
-analyze_cwt: false
+process_cwt: true
+analyze_cwt: true
 process_attr: true
 
 hlr:

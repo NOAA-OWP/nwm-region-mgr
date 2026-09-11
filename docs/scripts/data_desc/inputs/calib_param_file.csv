@@ -1,80 +1,80 @@
 sample_file_path|inputs/region/pseudo_calib_params/sampled_params_conus.csv
-title|Calibrated parameters for various modules for all gages in an NWM domain (e.g., CONUS).
+title|Calibrated parameters for various modules for all gages in an NWM domain (e.g., CONUS)
 gage_id|Unique identifier for each calibration gage.
-formulation|NextGen formualtion calibrated for a given gage (e.g., nom-cfes, nom-sac)
+formulation|NextGen formulation calibrated for a given gage (e.g., nom-cfes, nom-sac)
 MFSNO|NOM parameter: Melt factor for snow depletion curve
-CWP|NOM parameter: Canopy water capacity
-VCMX25|NOM parameter: Maximum canopy storage
-MP|NOM parameter: MP
-RSURF_SNOW|NOM parameter: Snow surface roughness
-RSURF_EXP|NOM parameter: Snow surface roughness exponent
-SCAMAX|NOM parameter: SCAMAX
-b|CFE parameter: b
-satdk|CFE parameter: satdk
-satpsi|CFE parameter: satpsi
-slope|CFE parameter: slope
-maxsmc|CFE parameter: maxsmc
-wltsmc|CFE parameter: wltsmc
-max_gw_storage|CFE parameter: max_gw_storage
-Cgw|CFE parameter: Cgw
-expon|CFE parameter: expon
-Kn|CFE parameter: Kn
-Klf|CFE parameter: Klf
-refkdt|CFE parameter: refkdt
-a_Xinanjiang_inflection_point_parameter|CFE-X parameter: a_Xinanjiang_inflection_point_parameter
-b_Xinanjiang_shape_parameter|CFE-X parameter: b_Xinanjiang_shape_parameter
-x_Xinanjiang_shape_parameter|CFE-X parameter: x_Xinanjiang_shape_parameter
-mfmax|snow-17 parameter: mfmax
-uadj|snow-17 parameter: uadj
-si|snow-17 parameter: si
-mfmin|snow-17 parameter: mfmin
-scf|snow-17 parameter: scf
-nmf|snow-17 parameter: nmf
-tipm|snow-17 parameter: tipm
-pxtemp|snow-17 parameter: pxtemp
-plwhc|snow-17 parameter: plwhc
-daygm|snow-17 parameter: daygm
-smcmin|lasam parameter: smcmin
-smcmax|lasam parameter: smcmax
+CWP|NOM parameter: Canopy wind parameter for canopy wind profile formulation
+VCMX25|NOM parameter: Maximum carboxylation at 25 deg C
+MP|NOM parameter: Slope of Ball-Berry conductance relationship
+RSURF_SNOW|NOM parameter: Soil surface resistance for snow
+RSURF_EXP|NOM parameter: Exponent in the resistance equation for soil evaporation
+SCAMAX|NOM parameter: Maximum fractional snow cover area
+b|CFE parameter: beta exponent on Clapp-Hornberger (1978) soil water relations
+satdk|CFE parameter: saturated hydraulic conductivity
+satpsi|CFE parameter: saturated capillary head
+slope|CFE parameter: this factor (0-1) modifies the gradient of the hydraulic head at the soil bottom. 0=no-flow
+maxsmc|CFE parameter: maximum soil moisture content
+wltsmc|CFE parameter: wilting point soil moisture content
+max_gw_storage|CFE parameter: maximum storage in the conceptual reservoir
+Cgw|CFE parameter: the primary outlet coefficient
+expon|CFE parameter: exponent for nonlinear ground water reservoir (1.0 for linear reservoir)
+Kn|CFE parameter: Nash Config param for lateral subsurface runoff (Nash discharge to storage ratio)
+Klf|CFE parameter: Nash Config param - primary reservoir 
+refkdt|CFE parameter: Reference Soil Infiltration Parameter (used in runoff formulation)
+a_Xinanjiang_inflection_point_parameter|CFE-X parameter: Xinanjiang 'a' coefficient when surface_water_partitioning_scheme=Xinanjiang 
+x_Xinanjiang_shape_parameter|CFE-X parameter: Xinanjiang 'x' coefficient when surface_water_partitioning_scheme=Xinanjiang 
+b_Xinanjiang_shape_parameter|CFE-X parameter: Xinanjiang 'b' coefficient when surface_water_partitioning_scheme=Xinanjiang
+mfmax|snow-17 parameter: maximum non-rain melt factor
+uadj|snow-17 parameter: Average wind function for rain on snow
+si|snow-17 parameter: 	100% snow cover threshold
+mfmin|snow-17 parameter: minimum non-rain melt factor
+scf|snow-17 parameter: Snow Correction Factor
+nmf|snow-17 parameter: maximum negative melt factor
+tipm|snow-17 parameter: Antecedent snow temperature index
+pxtemp|snow-17 parameter: Precipitation vs Snow threshold temperature
+plwhc|snow-17 parameter: percent liquid water holding capacity
+daygm|snow-17 parameter: daily ground melt
+smcmin|lasam parameter: residual water content (theta_r), or the minimum volumetric water content that a soil layer can naturally attain
+smcmax|lasam parameter: the maximum volumetric water content (theta_s) that a soil layer can naturally attain. Must be greater than theta_r
 van_genuchten_alpha|lasam parameter: van_genuchten_alpha
 van_genuchten_n|lasam parameter: van_genuchten_n
 hydraulic_conductivity|lasam parameter: hydraulic_conductivity
-ponded_depth_max|lasam parameter: ponded_depth_max
-field_capacity|lasam parameter: field_capacity
-df|UEB parameter: df
-cc|UEB parameter: cc
-hcan|UEB parameter: hcan
-lai|UEB parameter: lai
-subalb|UEB parameter: subalb
-ems|UEB parameter: ems
-cg|UEB parameter: cg
-zo|UEB parameter: zo
-rho|UEB parameter: rho
-rhog|UEB parameter: rhog
-Ks|UEB parameter: Ks
-de|UEB parameter: de
-avo|UEB parameter: avo
-apr|UEB parameter: apr
-uztwm|sac-sma parameter: uztwm
-uzfwm|sac-sma parameter: uzfwm
-lztwm|sac-sma parameter: lztwm
-lzfsm|sac-sma parameter: lzfsm
-lzfpm|sac-sma parameter: lzfpm
-adimp|sac-sma parameter: adimp
-uzk|sac-sma parameter: uzk
-lzpk|sac-sma parameter: lzpk
-lzsk|sac-sma parameter: lzsk
-zperc|sac-sma parameter: zperc
-rexp|sac-sma parameter: rexp
-pctim|sac-sma parameter: pctim
-pfree|sac-sma parameter: pfree
-riva|sac-sma parameter: riva
-side|sac-sma parameter: side
-szm|topmodel parameter: szm
-t0|topmodel parameter: t0
-td|topmodel parameter: td
-chv|topmodel parameter: chv
-rv|topmodel parameter: rv
-srmax|topmodel parameter: srmax
-sr0|topmodel parameter: sr0
-xk0|topmodel parameter: xk0
+ponded_depth_max|lasam parameter: the maximum amount of ponded water that is allowed to accumulate on the soil surface
+field_capacity|lasam parameter: capillary head corresponding to volumetric water content at which gravity drainage becomes slower
+df|UEB parameter: Drift multiplier
+cc|UEB parameter: Canopy cover fraction
+hcan|UEB parameter: Canopy height
+lai|UEB parameter: Leaf area index
+subalb|UEB parameter: Substrate albedo
+ems|UEB parameter: Emissivity of snow
+cg|UEB parameter: Ground heat capacity
+zo|UEB parameter: Roughness length
+rho|UEB parameter: Snow density
+rhog|UEB parameter: Soil density
+Ks|UEB parameter: Snow saturated hydraulic conductivity
+de|UEB parameter: Thermally active soil depth
+avo|UEB parameter: Visual new snow albedo
+apr|UEB parameter: Atmospheric pressure
+uztwm|sac-sma parameter: Maximum upper zone tension water
+uzfwm|sac-sma parameter: Maximum upper zone free water
+lztwm|sac-sma parameter: Maximum lower zone tension water
+lzfsm|sac-sma parameter: Maximum lower zone free water, secondary (aka supplemental)
+lzfpm|sac-sma parameter: Maximum lower zone free water, primary
+adimp|sac-sma parameter: Additional "impervious" area due to saturation
+uzk|sac-sma parameter: Upper zone recession coefficient
+lzpk|sac-sma parameter: Lower zone recession coefficient, primary
+lzsk|sac-sma parameter: Lower zone recession coefficient, secondary (aka supplemental)
+zperc|sac-sma parameter: Minimum percolation rate coefficient
+rexp|sac-sma parameter: Percolation equation exponent
+pctim|sac-sma parameter: Minimum percent impervious area
+pfree|sac-sma parameter: Percent percolating directly to lower zone free wate
+riva|sac-sma parameter: Percent of the basin that is riparian area
+side|sac-sma parameter: Portion of the baseflow which does not go to the stream
+szm|topmodel parameter: Exponential decline parameter of transmissivity
+t0|topmodel parameter: downslope transmissivity when the soil is saturated to the surface
+td|topmodel parameter: unsaturated zone time delay per unit storage deficit
+chv|topmodel parameter: average channel flow velocity
+rv|topmodel parameter: internal overland flow routing velocity
+srmax|topmodel parameter: maximum root zone storage deficit
+sr0|topmodel parameter: initial root zone storage deficit below field capacity (m)
+xk0|topmodel parameter: surface soil hydraulic conductivity

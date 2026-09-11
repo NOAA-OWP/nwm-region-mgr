@@ -1,2 +1,2 @@
-sample_file_path|outputs/region/spatial_distance/donor_receiver_dist_conus_vpu03S.parquet
+sample_file_path|outputs/region/test/spatial_distance/donor_receiver_dist_conus_vpu03S.parquet
 title|Spatial distances between donor and receiver catchments within the VPU. Columns represent donor catchments, and rows represent receiver catchments.

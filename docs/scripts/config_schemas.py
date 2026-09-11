@@ -495,7 +495,11 @@ def main(docs_to_create: dict) -> None:
     # Prepend intro and TOC
     md_text = intro_block + toc_block + md_text
 
-    Path("docs/source/config_builder/index.md").write_text(md_text, encoding="utf-8")
+    # Write to file
+    file_path = Path(__file__).parent.parent / "source" / "config_builder" / "index.md"
+    file_path.parent.mkdir(parents=True, exist_ok=True)
+    file_path.write_text(md_text, encoding="utf-8")
+    print(f"Config schemas generated and saved to {file_path}")
 
 
 if __name__ == "__main__":

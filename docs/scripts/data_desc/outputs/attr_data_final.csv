@@ -1,19 +1,28 @@
-sample_file_path|outputs/region/attr_data_final/attr_conus_vpu03S.parquet
+sample_file_path|outputs/region/test/attr_data_final/attr_conus_vpu03S.parquet
 title|Final attribute data used for regionalization, based on attribute selection in the configuration. Each attribute is prefixed by its corresponding dataset name.
-divide_id|Unique identifier for each catchment.
+div_id|Unique identifier for each catchment.
 is_donor|Indicates whether the catchment is a donor (true) or receiver (false).
-hlr_AQPERMNEW|Aquifer permeability
-hlr_SLOPE|Mean slope
-hlr_TAVE|Mean annual temperature
-hlr_PPT|Mean annual precipitation
-hlr_PET|Mean annual potential evaporatranspiration
-hlr_PMPE|Mean annual precipitation minus PET
-hlr_SAND|Percentage of sand in the soil
-hlr_MINELE|Minimum elevation
-hlr_RELIEF|Relief
-hlr_PFLATTOT|Total percentage of flatland
-hlr_PFLATLOW|Percentage of flatland in the lowland area
-hlr_PFLATUP|Percentage of flatland in the upland area
+ngen_area_sqkm|Area of the catchment in square kilometers
+ngen_elevation_mean|Mean elevation of the catchment
+ngen_slope250m_mean|Mean slope of the catchment at 250m resolution
+ngen_aspect_circmean|Aspect of the catchment in circular mean
+ngen_glacier_percent|Percentage of the catchment covered by glaciers
+ngen_bexp_mode|Mode of the beta exponent on Clapp-Hornberger (1978) soil water relations
+ngen_dksat_geomean|Geometric mean of saturated hydraulic conductivity
+ngen_psisat_geomean|Geometric mean of saturated capillary head
+ngen_cwpvt_mean|Mean canopy wind parameter for canopy wind profile formulation
+ngen_mp_mean|Mean slope of Ball-Berry conductance relationship
+ngen_mfsno_mean|Mean melt factor for snow depletion curve
+ngen_quartz_mean|Mean quartz content of the soil
+ngen_refkdt_mean|Mean soil infiltration parameter
+ngen_slope1km_mean|Mean slope of the catchment at 1km resolution
+ngen_smcmax_mean|Mean saturated soil moisture content
+ngen_smcwlt_mean|Mean wilting point soil moisture content
+ngen_vcmx_mean|Mean maximum carboxylation at 25 degC
+ngen_cgw|Coefficient controlling the drainage out of the soil bottom (0=no-flow)
+ngen_expon|Exponent for nonlinear ground water reservoir (1.0 for linear reservoir)
+ngen_max_gw_storage|Maximum storage in the conceptual ground water reservoir
+ngen_imperv_mean|Mean percentage of impervious area
 ngen_dksat|Saturated hydraulic conductivity
 ngen_psisat|Saturated capillary head
 ngen_smcmax|Saturated soil moisture content

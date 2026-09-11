@@ -1,7 +1,7 @@
 sample_file_path|inputs/region/cwt_divide_gage/calib_gage_divide_conus.parquet
 title|Crosswalk table linking gages to catchments (i.e., divides).
 gage_id|Unique identifier for each gage.
-divide_id|Unique identifier for each catchment.
-toid|Unique identifier for the nexus that the catchment flows to.
-areasqkm|Area of the catchment in square kilometers.
-vpuid|VPU the catchment belongs to.
+div_id|Unique identifier for each catchment.
+area_sqkm|Area of the catchment in square kilometers.
+vpu_id|VPU the catchment belongs to.
+type|Type of catchment (e.g., connector, aggregate, independent).

@@ -143,6 +143,15 @@ class ProcessAttrDataset(BaseModel):
 
         return self
 
+    def get_nhdplus_shp_file_for_vpu(self, vpu: str) -> Path:
+        """Get the NHDPlus shapefile for the specified VPU."""
+        nhdplus_vpu = Path(str(self.hf_file).replace("{vpu}", vpu)).expanduser()
+        if not nhdplus_vpu.exists():
+            raise FileNotFoundError(
+                f"NHDPlus shapefile not found for VPU {vpu}: {nhdplus_vpu}"
+            )
+        return nhdplus_vpu
+
     def create_cwt(
         self,
         shp1: gpd.GeoDataFrame,
@@ -254,11 +263,11 @@ class ProcessAttrDataset(BaseModel):
                 ]
                 # fmt: on
             case "ak":
-                vpu_list = ["ak"]
+                vpu_list = ["19"]
             case "hi":
-                vpu_list = ["hi"]
+                vpu_list = ["20"]
             case "prvi":
-                vpu_list = ["prvi"]
+                vpu_list = ["21"]
             case _:
                 raise Exception(f"Unsupported domain: {self.domain}")
 
@@ -289,14 +298,15 @@ class ProcessAttrDataset(BaseModel):
         shp_vpu = self.get_vpu_gpd(vpu)
 
         # read attribute dataset sub-basins given the vpu bounding box
-        with fiona.open(self.hf_file) as src:
+        hf_file = self.get_nhdplus_shp_file_for_vpu(vpu)
+        with fiona.open(hf_file) as src:
             crs_attr = src.crs
         bbox = shp_vpu.total_bounds
         bbox_geom = gpd.GeoSeries([box(*bbox)], crs=shp_vpu.crs)
         bbox_reprojected = bbox_geom.to_crs(crs_attr)
         bbox_bounds = bbox_reprojected.total_bounds
         bbox_geom1 = box(*bbox_bounds)
-        shp_attr = gpd.read_file(self.hf_file, layer=self.layer, bbox=bbox_geom1)
+        shp_attr = gpd.read_file(hf_file, layer=self.layer, bbox=bbox_geom1)
 
         # rename id column for processing in create_cwt
         shp_attr.rename(columns={self.id_col: "id"}, inplace=True)
@@ -466,8 +476,9 @@ class ProcessAttrDataset(BaseModel):
             gc.collect()
 
             # get attribute dataset sub-basins for the vpu
+            hf_file = self.get_nhdplus_shp_file_for_vpu(vpu)
             gdf_all = gpd.read_file(
-                Path(self.hf_file),
+                hf_file,
                 layer=self.layer,
                 columns=[self.id_col, "geometry"],
             )
@@ -766,11 +777,12 @@ class ProcessAttrDataset(BaseModel):
             df_attrs_weighted = df_attrs.copy()
 
         # make sure div_col column is string type
-        df_attrs_weighted[self.div_col] = df_attrs_weighted[self.div_col].astype(
-            "string"
+        df_attrs_weighted[self.div_col] = (
+            df_attrs_weighted[self.div_col].astype("Int64").astype("string")
         )
 
         # save attr data to parquet file
+        gc.collect()
         Path(self.attr_file).parent.mkdir(parents=True, exist_ok=True)
         df_attrs_weighted.to_parquet(self.attr_file, engine="pyarrow")
         print(f"Saved processed {self.attr_dataset} attributes to {self.attr_file}")

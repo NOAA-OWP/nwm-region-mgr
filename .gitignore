@@ -1,19 +1,10 @@
 # Data and outputs
-data/*
-
-# Allow Git to see the 'inputs' folder itself
-!data/inputs/
-
-# Ignore everything inside 'inputs' by default
-data/inputs/*
-
-# But unignore the specific subfolder you want
-!data/inputs/attr_config/
-!data/inputs/attr_config/**
+data/
 
 # Virtual environments
 venv/
 .venv/
+.env
 
 # Build artifacts
 build/
@@ -29,7 +20,11 @@ __pycache__/
 docs/build/*
 docs/source/API/*
 !docs/source/API/index.rst
+
 # Specific project paths
 pkgs/parreg/build
 pkgs/parreg/tests/test_data/test_outputs
 nwm-rte
+
+# random files not for tracking
+files_not_tracked/

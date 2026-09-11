@@ -7,13 +7,12 @@ general:
     pair_data: true
     compute_metrics: true
     plot_metrics: true
-  domain: conus  # Define NWM domain. Supported options: conus, ak, hi, prvi
-  assemble_domain: false # whether to assemble the domain from multiple VPUs (if applicable) for evaluation; if False, only the specified VPU will be evaluated
-  location_set_name: vpu_03S  # user-specified name for the set of locations
+  domain: ak  # Define NWM domain. Supported options: conus, ak, hi, prvi
+  location_set_name: vpu_19  # user-specified name for the set of locations
   location_type: usgs_gage # location type
   location_filter: # filter locations based on column and value in the gage crosswalk file; if null, all locations in the crosswalk file will be used, unless location_list or location_list_file is specified
     columns: ["vpu_id"] 
-    values: ["03S"] 
+    values: ["19"] 
   variable_name: streamflow # currently only 'streamflow' is supported
   nwm_configuration: ngen_simulation    
   dataset_name: [test_kmeans] # user-specified name of datasets (e.g., formualtion or algorithm name)

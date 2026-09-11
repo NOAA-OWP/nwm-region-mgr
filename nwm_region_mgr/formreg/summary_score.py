@@ -240,7 +240,7 @@ def compute_summary_score(config: cs.Config, vpu: str) -> None:
     if cc is None:
         return
 
-    filepath = cc.get_file_path(None, use_stem_suffix=True)
+    filepath = cc.get_file_path(vpu=None, use_stem_suffix=True)
 
     # compute summary scores for all gages in the domain only if this is the first VPU
     if not filepath.exists():

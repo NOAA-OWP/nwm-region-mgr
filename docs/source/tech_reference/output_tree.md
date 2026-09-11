@@ -5,13 +5,13 @@ The output directory contains three subdirectories: `region`, `ngen`, and `eval`
 ```bash
 outputs
 ├── eval
-│   └── vpu_09
+│   └── vpu_03S
 │   │   ├── joined
-│   │   │   ├── test1_gower.ngen.ngen_simulation.joined.parquet
-│   │   │   └── test1_kmeans.ngen.ngen_simulation.joined.parquet
+│   │   │   ├── test_kmeans.ngen.ngen_simulation.joined.group0.parquet
+│   │   │   ├── test_kmeans.ngen.ngen_simulation.joined.group1.parquet
+│   │   │   └── test_kmeans.ngen.ngen_simulation.joined.group2.parquet
 │   │   ├── metrics
-│   │   │   ├── test1_gower.ngen.ngen_simulation.metrics.parquet
-│   │   │   └── test1_kmeans.ngen.ngen_simulation.metrics.parquet
+│   │   │   └── test_kmeans.ngen.ngen_simulation.metrics.parquet
 │   │   ├── nwm_verf_config_expanded.yaml
 │   │   ├── plots
 │   │   │   └── ngen_simulation
@@ -26,97 +26,90 @@ outputs
 │   │   │   │   │   ├── hist_NNSE.png
 │   │   │   │   │   └── hist_NSE.png
 │   │   │   │   └── spatial_map
-│   │   │   │   │   ├── map_CORR_test1_gower.png
-│   │   │   │   │   ├── map_CORR_test1_kmeans.png
-│   │   │   │   │   ├── map_KGE_test1_gower.png
-│   │   │   │   │   ├── map_KGE_test1_kmeans.png
-│   │   │   │   │   ├── map_NNSE_test1_gower.png
-│   │   │   │   │   ├── map_NNSE_test1_kmeans.png
-│   │   │   │   │   ├── map_NSE_test1_gower.png
-│   │   │   │   │   └── map_NSE_test1_kmeans.png
-│   │   ├── test1_gower
+│   │   │   │   │   ├── map_CORR_test_kmeans.png
+│   │   │   │   │   ├── map_KGE_test_kmeans.png
+│   │   │   │   │   ├── map_NNSE_test_kmeans.png
+│   │   │   │   │   └── map_NSE_test_kmeans.png
+│   │   ├── test_kmeans
 │   │   │   └── ngen_simulation
-│   │   │   │   └── 20221001T03-20221001T10.parquet
-│   │   ├── test1_kmeans
-│   │   │   └── ngen_simulation
-│   │   │   │   └── 20221001T03-20221001T10.parquet
+│   │   │   │   └── 20121001T03-20121001T10.parquet
 │   │   ├── usgs
-│   │   │   └── 2022-10-01_2022-10-03.parquet
+│   │   │   └── 2012-10-01_2012-10-03.parquet
 │   │   └── verification.log
-├── mswm.config_test1_gower_vpu09
-├── mswm.config_test1_kmeans_vpu09
+├── mswm.config_test_kmeans_vpu03S
 ├── ngen
 │   ├── regionalization
-│   │   ├── test1_gower
-│   │   │   └── vpu_09
-│   │   │   │   └── Output
-│   │   │   │   │   └── troute_output_202210010000.nc
-│   │   └── test1_kmeans
-│   │   │   └── vpu_09
-│   │   │   │   └── Output
-│   │   │   │   │   └── troute_output_202210010000.nc
-│   └── test1
-│   │   └── config_ngen_final.yaml
+│   │   └── test_kmeans
+│   │   │   └── vpu_03S
+│   │   │   │   ├── Output
+│   │   │   │   │   └── troute_output_201210010000.nc
+│   │   │   │   ├── logs
+│   │   │   │   │   ├── msw_mgr_regionalization.log
+│   │   │   │   │   └── msw_mgr_regionalization_payload.log
+│   │   │   │   └── vpu_03S_realization_config_bmi_region.json
+│   └── test
+│   │   ├── config_ngen_final_conus.yaml
+│   │   └── ngen_conus.log
 └── region
-│   ├── test1
+│   └── test
 │   │   ├── attr_data_final
-│   │   │   ├── attr_conus_vpu09.parquet
+│   │   │   ├── attr_conus_vpu03S.parquet
 │   │   │   └── plots
-│   │   │   │   ├── bar_attr_missing_count_conus_vpu09.png
-│   │   │   │   ├── hist_attr_conus_vpu09.png
-│   │   │   │   └── map_attr_conus_vpu09.png
-│   │   ├── config_formreg_final.yaml
-│   │   ├── config_parreg_final.yaml
+│   │   │   │   ├── bar_attr_missing_count_conus_vpu03S.png
+│   │   │   │   ├── hist_attr_conus_vpu03S.png
+│   │   │   │   └── map_attr_conus_vpu03S.png
+│   │   ├── config_parreg_final_conus.yaml
 │   │   ├── formulations
-│   │   │   ├── form_conus_vpu04.parquet
-│   │   │   ├── form_conus_vpu04_pars.parquet
-│   │   │   ├── form_conus_vpu07.parquet
-│   │   │   ├── form_conus_vpu07_pars.parquet
-│   │   │   ├── form_conus_vpu09.parquet
-│   │   │   ├── form_conus_vpu09_pars.parquet
-│   │   │   ├── form_conus_vpu10U.parquet
-│   │   │   ├── form_conus_vpu10U_pars.parquet
+│   │   │   ├── form_conus_vpu03N.parquet
+│   │   │   ├── form_conus_vpu03N_pars.parquet
+│   │   │   ├── form_conus_vpu03S.parquet
+│   │   │   ├── form_conus_vpu03S_pars.parquet
+│   │   │   ├── form_conus_vpu03W.parquet
+│   │   │   ├── form_conus_vpu03W_pars.parquet
+│   │   │   ├── form_conus_vpu06.parquet
+│   │   │   ├── form_conus_vpu06_pars.parquet
 │   │   │   └── plots
-│   │   │   │   ├── hist_form_conus_vpu04.png
-│   │   │   │   ├── hist_form_conus_vpu07.png
-│   │   │   │   ├── hist_form_conus_vpu09.png
-│   │   │   │   ├── hist_form_conus_vpu10U.png
-│   │   │   │   ├── map_form_conus_vpu04.png
-│   │   │   │   ├── map_form_conus_vpu07.png
-│   │   │   │   ├── map_form_conus_vpu09.png
-│   │   │   │   └── map_form_conus_vpu10U.png
+│   │   │   │   ├── hist_form_conus_vpu03N.png
+│   │   │   │   ├── hist_form_conus_vpu03S.png
+│   │   │   │   ├── hist_form_conus_vpu03W.png
+│   │   │   │   ├── hist_form_conus_vpu06.png
+│   │   │   │   ├── map_form_conus_vpu03N.png
+│   │   │   │   ├── map_form_conus_vpu03S.png
+│   │   │   │   ├── map_form_conus_vpu03W.png
+│   │   │   │   └── map_form_conus_vpu06.png
 │   │   ├── pairs
-│   │   │   ├── pairs_gower_conus_vpu09.parquet
-│   │   │   ├── pairs_gower_conus_vpu09_mswm.csv
-│   │   │   ├── pairs_kmeans_conus_vpu09.parquet
-│   │   │   ├── pairs_kmeans_conus_vpu09_mswm.csv
+│   │   │   ├── pairs_gower_conus_vpu03S.parquet
+│   │   │   ├── pairs_gower_conus_vpu03S_mswm.csv
+│   │   │   ├── pairs_kmeans_conus_vpu03S.parquet
+│   │   │   ├── pairs_kmeans_conus_vpu03S_mswm.csv
 │   │   │   └── plots
-│   │   │   │   ├── hist_pairs_gower_conus_vpu09.png
-│   │   │   │   ├── hist_pairs_kmeans_conus_vpu09.png
-│   │   │   │   ├── map_donors_conus_vpu09.png
-│   │   │   │   ├── map_pairs_gower_conus_vpu09.png
-│   │   │   │   └── map_pairs_kmeans_conus_vpu09.png
+│   │   │   │   ├── hist_pairs_gower_conus_vpu03S.png
+│   │   │   │   ├── hist_pairs_kmeans_conus_vpu03S.png
+│   │   │   │   ├── map_donors_conus_vpu03S.png
+│   │   │   │   ├── map_pairs_gower_conus_vpu03S.png
+│   │   │   │   └── map_pairs_kmeans_conus_vpu03S.png
 │   │   ├── params
-│   │   │   ├── formulation_params_gower_conus_vpu09.csv
-│   │   │   ├── formulation_params_kmeans_conus_vpu09.csv
+│   │   │   ├── formulation_params_gower_conus_vpu03S.csv
+│   │   │   ├── formulation_params_kmeans_conus_vpu03S.csv
 │   │   │   └── plots
-│   │   │   │   └── map_formulation_params_kmeans_conus_vpu09.png
+│   │   │   │   ├── map_formulation_params_gower_conus_vpu03S.png
+│   │   │   │   └── map_formulation_params_kmeans_conus_vpu03S.png
+│   │   ├── parreg_conus.log
 │   │   ├── spatial_distance
-│   │   │   └── donor_receiver_dist_conus_vpu09.parquet
+│   │   │   └── donor_receiver_dist_conus_vpu03S.parquet
 │   │   └── summary_score
 │   │   │   ├── plots
-│   │   │   │   ├── hist_score_conus_vpu04.png
-│   │   │   │   ├── hist_score_conus_vpu07.png
-│   │   │   │   ├── hist_score_conus_vpu09.png
-│   │   │   │   ├── hist_score_conus_vpu10U.png
-│   │   │   │   ├── map_score_conus_vpu04.png
-│   │   │   │   ├── map_score_conus_vpu07.png
-│   │   │   │   ├── map_score_conus_vpu09.png
-│   │   │   │   └── map_score_conus_vpu10U.png
+│   │   │   │   ├── hist_score_conus_vpu03N.png
+│   │   │   │   ├── hist_score_conus_vpu03S.png
+│   │   │   │   ├── hist_score_conus_vpu03W.png
+│   │   │   │   ├── hist_score_conus_vpu06.png
+│   │   │   │   ├── map_score_conus_vpu03N.png
+│   │   │   │   ├── map_score_conus_vpu03S.png
+│   │   │   │   ├── map_score_conus_vpu03W.png
+│   │   │   │   └── map_score_conus_vpu06.png
 │   │   │   ├── score_conus_all_gages.parquet
-│   │   │   ├── score_conus_vpu04.parquet
-│   │   │   ├── score_conus_vpu07.parquet
-│   │   │   ├── score_conus_vpu09.parquet
-│   │   │   └── score_conus_vpu10U.parquet
-│   └── test1.log
+│   │   │   ├── score_conus_vpu03N.parquet
+│   │   │   ├── score_conus_vpu03S.parquet
+│   │   │   ├── score_conus_vpu03W.parquet
+│   │   │   └── score_conus_vpu06.parquet
 ```

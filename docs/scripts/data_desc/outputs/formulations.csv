@@ -1,7 +1,7 @@
-sample_file_path|outputs/region/formulations/form_conus_vpu03S.parquet
+sample_file_path|outputs/region/test/formulations/form_conus_vpu03S.parquet
 title|Formulations selected for each catchment from formulation regionalization.
 vpu|Hydrologic VPU the catchment belongs to.
-divide_id|Unique identifier for each catchment.
+div_id|Unique identifier for each catchment.
 formulation|Formulation assigned to the catchment.
 huc_id|HUC ID the catchment belongs to (given the huc level specified in the configuration).
 total_score|Total formulation summary score across all calibrated catchments in the HUC region. If "average_score" is chosen in the configuration, this column would be the average score instead.

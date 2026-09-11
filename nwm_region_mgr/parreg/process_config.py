@@ -93,7 +93,7 @@ class ParameterRegionalizationProcessor(BaseConfigProcessor):
 
         all_exist = True  # Assume all exist until proven otherwise
         for pairer_name in self.pairer_names:
-            outfile = co.get_file_path(vpu=self.vpu, algorithm=pairer_name)
+            outfile = co.get_file_path(algorithm=pairer_name)
             if not outfile.exists():
                 all_exist = False
                 break  # No need to check further, we know not all exist
@@ -464,7 +464,9 @@ class ParameterRegionalizationProcessor(BaseConfigProcessor):
             # check if all donors are in the hydrofabric
             donors_missing = set(donors0) - set(donors)
             if len(donors_missing) > 0:
-                logger.warning(f"Missing donors in hydrofabric: {donors_missing}")
+                logger.warning(
+                    f"Missing {len(donors_missing)} donors in hydrofabric: {list(donors_missing)}"
+                )
 
             # gather donors and receivers in GeoDataFrame
             gdf_donors = pd.concat([gdf_donors, gdf1])
@@ -836,7 +838,6 @@ class ParameterRegionalizationProcessor(BaseConfigProcessor):
         if out is not None:
             out.save_to_file(
                 self.sorted_df_attrs_all,
-                vpu=self.vpu,
                 data_str=f"Final Attribute Data (VPU {self.vpu})",
                 use_stem_suffix=False,
             )
@@ -1034,7 +1035,7 @@ class ParameterRegionalizationProcessor(BaseConfigProcessor):
 
         # read the pairing results from file if df_pairs is not provided
         if df_pairs is None or df_pairs.empty:
-            outfile = co.get_file_path(vpu=self.vpu, algorithm=algorithm)
+            outfile = co.get_file_path(algorithm=algorithm)
             if not outfile.exists():
                 msg = f"Pairing results file does not exist: {outfile}. Please run the pairing first."
                 logger.error(msg)
@@ -1177,7 +1178,6 @@ class ParameterRegionalizationProcessor(BaseConfigProcessor):
         # save donor receiver pairing to csv file
         co.save_to_file(
             df_pairs,
-            vpu=self.vpu,
             algorithm=pairer_name,
             data_str=f"Pairing results (VPU {self.vpu}, algorithm = {pairer_name})",
             use_stem_suffix=False,
@@ -1218,7 +1218,6 @@ class ParameterRegionalizationProcessor(BaseConfigProcessor):
             co.format = "csv"
         co.save_to_file(
             df_pairs_gage,
-            vpu=self.vpu,
             algorithm=pairer_name,
             data_str=f"Pairing results (VPU {self.vpu}, algorithm = {pairer_name})",
             use_stem_suffix=True,
@@ -1304,9 +1303,7 @@ class ParameterRegionalizationProcessor(BaseConfigProcessor):
             )
             return
 
-        pair_file = co.get_file_path(
-            vpu=self.vpu, algorithm=pairer, use_stem_suffix=True
-        )
+        pair_file = co.get_file_path(algorithm=pairer, use_stem_suffix=True)
 
         # replace file suffix with .csv (MSWM requirement)
         if pair_file.suffix != ".csv":
@@ -1340,7 +1337,6 @@ class ParameterRegionalizationProcessor(BaseConfigProcessor):
                 return
             out.save_to_file(
                 df_param_all,
-                vpu=self.vpu,
                 algorithm=pairer,
                 data_str=f"Formulation Parameter Data (VPU {self.vpu}, algorithm = {pairer})",
                 use_stem_suffix=False,
@@ -1382,6 +1378,7 @@ class ParameterRegionalizationProcessor(BaseConfigProcessor):
         columns_to_plot = co.plots.get("columns_to_plot", [])
         plot_dict = {
             "vpu": self.vpu,
+            "algorithm": pairer_name,
             "var_str": "Regionalized Parameters",
             "columns": columns_to_plot,
             "ncols": min(3, len(columns_to_plot)),
@@ -1426,7 +1423,7 @@ class ParameterRegionalizationProcessor(BaseConfigProcessor):
         # loop through regionalization algorithms to generate donor-receiver pairings for each algorithm/scenario combination
         for pairer_name in self.pairer_names:
             # outfile = self.construct_output_filepath(pairer_name)
-            outfile = co.get_file_path(vpu=self.vpu, algorithm=pairer_name)
+            outfile = co.get_file_path(algorithm=pairer_name)
             processed_receivers_df = pd.DataFrame()
             if outfile.exists():
                 logger.info(f"Pair file already exist: {outfile}")

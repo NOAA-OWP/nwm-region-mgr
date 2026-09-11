@@ -6,12 +6,12 @@
 general:
   run_name: test  # Name of the run, used to create output folders and files
   domain: prvi  # Define NWM domain. Supported options: conus, ak, hi, prvi
-  vpu_list: ['21'] # List of VPUs to process. Valid VPUs for conus: ['01','02','03N','03S','03W', ...,'10L','10U',..., '18']; ak: ['19']; hi: ['20']; prvi: ['21']
+  vpu: '21' # VPU to process. Valid VPUs for conus: ['01','02','03N','03S','03W', ...,'10L','10U',..., '18']; ak: ['19']; hi: ['20']; prvi: ['21']
   n_procs: 18  # Number of processors to use
 
   base_dir: '${WORK_DIR}' # Path to the base directory, with WORK_DIR & REPOS_COMMON_ROOT__HOST set via docker run to the current working directory (e.g., /ngen-dev/$USER_NAME/run_region) and common NGWPC repos root (e.g.,/ngencerf-app) on host, respectively 
   static_data_dir: '${REPOS_COMMON_ROOT__HOST}/nwm-region-mgr/data/inputs'  # Path to the static data directory (where all sample inputs for regionalization are stored) 
-  ngen_hydrofabric_file: '{static_data_dir}/region/hydrofabric/gpkg_vpu/vpu_{vpu_list}.gpkg'  # Path to the hydrofabric file 
+  ngen_hydrofabric_file: '{static_data_dir}/region/hydrofabric/gpkg_vpu/vpu_{vpu}.gpkg'  # Path to the hydrofabric file 
   gage_divide_cwt_file: '{static_data_dir}/region/cwt_divide_gage/calib_gage_divide_{domain}.parquet' # Path to the file containing the mapping of calibration gages to divides
   donor_gage_file: '{static_data_dir}/region/gages_nwm4_calib_all.csv' # Path to the file containing the list of all calibratable headwater basins
   calval_stats_file: '{static_data_dir}/region/calval_stats/stat_calval_all_{domain}.parquet' #Path to file where statistics from calibration and validation are stored

@@ -1,6 +1,6 @@
-sample_file_path|outputs/region/pairs/pairs_gower_conus_vpu03S.parquet
+sample_file_path|outputs/region/test/pairs/pairs_gower_conus_vpu03S.parquet
 title|Receiver-donor pairs generated from parameter regionalization using distance-based algorithms (currently Gower and URF). 
-divide_id|Unique identifier for each receiver catchment.  
+div_id|Unique identifier for each receiver catchment.  
 tag|Identifier indicating whether the donor is found using all selected attributes during the "main" run or using basic attributes during the "basic" run.
 donor|Unique identifier for each donor catchment.
 distSpatial|Spatial distance between the receiver and donor catchments (in kilometers).

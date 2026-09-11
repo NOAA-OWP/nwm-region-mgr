@@ -1,14 +1,13 @@
 sample_file_path|inputs/region/hydrofabric/gpkg_vpu/vpu_03S.gpkg
-title|NGEN Hydrofabric Catchment Divides for a VPU. Only the divides layer is used during regionalization.
-divide_id|Unique identifier for each catchment.
-toid|Identifier of the downstream feature (nexus) to which this catchment drains.
-type|Type of feature (e.g., divide).
-ds_id|Drainage system identifier.
-areasqkm|Area in square kilometers.
-vpuid|VPU identifier.
-id|Identifier.
-lengthkm|Length in kilometers.
-tot_drainage_areasqkm|Total drainage area in square kilometers.
-has_flowline|Indicates if the catchment has a flowline.
-geometry|Catchment geometry in WKT format.
-
+title|NGEN Hydrofabric for a VPU.
+div_id|Unique identifier for each catchment.
+vpu_id|VPU identifier.
+bexp_mode|Beta exponent on Clapp-Hornberger (1978) soil water relations.
+fp_id|Unique identifier for the flowpath. Shares the same value with the corresponding catchment's div_id.
+type| Type of catchment (e.g., independent, connector, aggregate).
+area_sqkm|Area in square kilometers.
+length_km|flowpath length in kilometers.
+dn_nex_id|Unique identifier for the downstream nexus that the catchment flows to.
+up_nex_id|Unique identifier for the upstream nexus that flows to the catchment.
+site_no|USGS gage ID.
+status|Status of the gage (e.g., active, discontinued).

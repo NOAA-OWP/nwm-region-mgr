@@ -51,7 +51,7 @@ class GeneralConfig(BaseGeneralConfig):
             "Path to the manual pairings file. If provided, this file will be used to specify "
             "manual donor-receiver pairings, overriding the algorithmic selections."
         ),
-        examples="{static_data_dir}/region/manual_pairings/manual_pairs_{vpu_list}.csv",
+        examples="{static_data_dir}/region/manual_pairings/manual_pairs_{vpu}.csv",
         default=None,
     )
 
@@ -719,7 +719,7 @@ class ParameterOutputConfig(BaseModel):
         examples={
             "save": True,
             "path": "{base_dir}/outputs/{run_name}/pairs",
-            "stem": "pairs_{algorithm_list}_{domain}_vpu{vpu_list}",
+            "stem": "pairs_{algorithm_list}_{domain}_vpu{vpu}",
             "stem_suffix": "_mswm",  # suffix for the pairs file to be used by MSWM
             "format": "parquet",
             "plots": {
@@ -737,7 +737,7 @@ class ParameterOutputConfig(BaseModel):
         examples={
             "save": True,
             "path": "{base_dir}/outputs/{run_name}/params",
-            "stem": "formulation_params_{algorithm_list}_{domain}_vpu{vpu_list}",
+            "stem": "formulation_params_{algorithm_list}_{domain}_vpu{vpu}",
             "format": "csv",
             "plots": {
                 "spatial_map": True,
@@ -757,7 +757,7 @@ class ParameterOutputConfig(BaseModel):
         examples={
             "save": True,
             "path": "{base_dir}/outputs/{run_name}/attr_data_final",
-            "stem": "attr_{domain}_vpu{vpu_list}",
+            "stem": "attr_{domain}_vpu{vpu}",
             "format": "parquet",
             "plots": {
                 "spatial_map": True,

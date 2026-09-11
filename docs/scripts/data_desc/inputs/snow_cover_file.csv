@@ -1,4 +1,0 @@
-sample_file_path|inputs/region/snow_frac/vpu03S_snow_frac.parquet
-title|File containing snow cover fraction for all catchments in a NWM domain (e.g., CONUS).
-divide_id|Unique identifier for each catchment.
-snow_pc_hydroatlas|snowcover percentage from HydroATLAS dataset

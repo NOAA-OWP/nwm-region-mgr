@@ -3,7 +3,7 @@
 The script reads HUC12 and NextGen catchment shapefiles, identifies the best matching HUC12 for each catchment
 based on maximum area overlap, and outputs a crosswalk table with the matched pairs and overlap information.
 
-The script supports both NHF v1 and v2.2 GPKG files.
+The script supports both NHF and HF v2.2 GPKG files.
 """
 
 from functools import lru_cache
@@ -13,7 +13,7 @@ import geopandas as gpd
 import matplotlib.pyplot as plt
 import pandas as pd
 
-hf_version = "nhf"  #  "nhf" or "v2.2"
+hf_version = "nhf_1.2.2"  #  "nhf" or "v2.2"
 
 id_col = "divide_id" if hf_version == "v2.2" else "div_id"
 area_col = "areasqkm" if hf_version == "v2.2" else "area_sqkm"
@@ -121,11 +121,11 @@ def get_vpu_list(domain: str) -> list:
             ]
             # fmt: on
         case "ak":
-            vpu_list = ["ak"]
+            vpu_list = ["19"]
         case "hi":
-            vpu_list = ["hi"]
+            vpu_list = ["20"]
         case "prvi":
-            vpu_list = ["prvi"]
+            vpu_list = ["21"]
         case _:
             raise Exception(f"Unsupported domain: {domain}")
 
@@ -164,9 +164,10 @@ def create_crosswalk_cat_huc12(domain: str, outfile: Path) -> pd.DataFrame:
             else "21"
         )
         shp1 = shp_huc[shp_huc["VPUID"] == vpu1]
-        file_stem = f"vpu_{vpu}" if domain == "conus" else f"vpu_{vpu}_nhf_1.1.3"
+        file_stem = f"vpu_{vpu1}"  # if domain == "conus" else f"vpu_{vpu}_nhf_1.1.3"
         gpkg_file = Path(
-            f"~/data/hydrofabric/gpkg_{hf_version}/{file_stem}.gpkg"
+            # f"~/data/hydrofabric/gpkg_{hf_version}/{file_stem}.gpkg"
+            f"../data/inputs/region/hydrofabric/gpkg_vpu/{file_stem}.gpkg"
         ).expanduser()
         if not gpkg_file.exists():
             print(f"GPKG file does not exist for VPU {vpu}: {gpkg_file}. Skipping.")
@@ -219,7 +220,7 @@ def plot_unmatched_catchments(df_cwt: pd.DataFrame, domain: str, outdir: Path):
         vpus = get_vpu_list(domain)
         gdfs = []
         for vpu in vpus:
-            file_stem = f"vpu_{vpu}" if domain == "conus" else f"vpu_{vpu}_nhf_1.1.3"
+            file_stem = f"vpu_{vpu}"  # if domain == "conus" else f"vpu_{vpu}_nhf_1.1.3"
             gpkg_file = Path(
                 f"~/data/hydrofabric/gpkg_{hf_version}/{file_stem}.gpkg"
             ).expanduser()
@@ -271,7 +272,7 @@ def process_domain(domain: list | str):
     )
     for domain in domains:
         # check if crosswalk file already exists; if not, create it
-        outdir = Path(f"~/data/region_input/{hf_version}/cwt_ngen_huc12").expanduser()
+        outdir = Path(f"~/data/region_input/{hf_version}/cwt_divide_huc12").expanduser()
         outdir.mkdir(exist_ok=True, parents=True)
         outfile = Path(outdir, "cwt_huc12_divide_" + domain + ".csv")
 
@@ -291,4 +292,5 @@ def process_domain(domain: list | str):
 
 
 if __name__ == "__main__":
-    process_domain("all")
+    # process_domain("all")
+    process_domain("conus")

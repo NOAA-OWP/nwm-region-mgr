@@ -27,14 +27,18 @@ TIMESTAMP_FMT1 = "%Y-%m-%d %H:%M:%S"
 
 
 def validate_timestamp(value: str) -> str:
-    """Validate that the given string is in the correct timestamp format."""
-    try:
-        datetime.strptime(value, TIMESTAMP_FMT)
-    except ValueError:
-        raise ValueError(
-            f"Invalid timestamp '{value}'. Expected format {TIMESTAMP_FMT}"
-        )
-    return value
+    """Validate that the given string matches one of the supported timestamp formats."""
+    for fmt in (TIMESTAMP_FMT, TIMESTAMP_FMT1):
+        try:
+            datetime.strptime(value, fmt)
+            return value
+        except ValueError:
+            continue
+
+    raise ValueError(
+        f"Invalid timestamp '{value}'. Expected format "
+        f"{TIMESTAMP_FMT!r} or {TIMESTAMP_FMT1!r}"
+    )
 
 
 class NgenGeneralSettings(BaseGeneralConfig):
@@ -61,16 +65,17 @@ class NgenGeneralSettings(BaseGeneralConfig):
 
     par_file: Path | str | Dict[str, Path] | Dict[str, str] = Field(
         description="Path to the formulation parameters file for NGEN simulation.",
-        examples="outputs/region/{run_name}/params/formulation_params_{algorithm_list}_conus_vpu{vpu_list}.csv",
+        examples="outputs/region/{run_name}/params/formulation_params_{algorithm_list}_conus_vpu{vpu}.csv",
     )
     pair_file: Path | str | Dict[str, Path] | Dict[str, str] = Field(
         description="Path to the pairing file for NGEN simulation.",
-        examples="outputs/region/{run_name}/pairs/pairs_{algorithm_list}_conus_vpu{vpu_list}_mswm.csv",
+        examples="outputs/region/{run_name}/pairs/pairs_{algorithm_list}_conus_vpu{vpu}_mswm.csv",
     )
 
     config_template: Path | str = Field(
-        description="Path to the MSWM configuration template file.",
-        examples="ngen/mswm.config.template.docker",
+        default="default_mswm_template.txt",
+        description="Path to the MSWM configuration template file for NGEN simulation.",
+        examples=["default_mswm_template.txt"],
     )
 
     # validate timestamp fields

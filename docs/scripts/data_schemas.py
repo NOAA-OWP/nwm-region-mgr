@@ -15,6 +15,7 @@ with a `sample_file_path` entry pointing to the sample file on S3.
 credentials are up to date in the `.env` file or environment variables for S3 access.
 """
 
+import argparse
 import os
 import re
 import tempfile
@@ -26,20 +27,19 @@ import boto3
 import fiona
 import geopandas as gpd
 import pandas as pd
-import yaml
 from dotenv import load_dotenv
 
-S3_DATA_DIR = "regionalization/data"
-INPUT_DATA_DIR = S3_DATA_DIR + "/inputs/region"
-OUTPUT_DATA_DIR = S3_DATA_DIR + "/sample_outputs/test"
+# S3_DATA_DIR = "nwm-tools-data/regionalization/data"
+# INPUT_DATA_DIR = S3_DATA_DIR + "/inputs/region"
+# OUTPUT_DATA_DIR = S3_DATA_DIR + "/sample_outputs/test"
 
-DATA_DESC_DIR = "docs/scripts/data_desc"
-OUTPUT_DESC_DIR = DATA_DESC_DIR + "/outputs"
-INPUT_DESC_DIR = DATA_DESC_DIR + "/inputs"
+# DATA_DESC_DIR = "docs/scripts/data_desc"
+# OUTPUT_DESC_DIR = DATA_DESC_DIR + "/outputs"
+# INPUT_DESC_DIR = DATA_DESC_DIR + "/inputs"
 
-OUT_PATH = "docs/source/tech_reference"
-INPUT_DATA_FILE = OUT_PATH + "/input_data.rst"
-OUTPUT_DATA_FILE = OUT_PATH + "/output_data.rst"
+# OUT_PATH = "docs/source/tech_reference"
+# INPUT_DATA_FILE = OUT_PATH + "/input_data.rst"
+# OUTPUT_DATA_FILE = OUT_PATH + "/output_data.rst"
 
 
 def initialize_s3_client():
@@ -75,8 +75,8 @@ def get_sample_data_files(base_dir: Path, desc_dir: Path) -> dict[str, str]:
         df = pd.read_csv(f, delimiter="|", index_col=False, header=None)
         if "sample_file_path" in df[0].values:
             sample_path = df[df[0] == "sample_file_path"][1].values[0]
-            sample_path = sample_path.replace("inputs/region/", "")
-            sample_path = sample_path.replace("outputs/region/", "")
+            # sample_path = sample_path.replace("inputs/region/", "")
+            # sample_path = sample_path.replace("outputs/region/", "")
             file_dict[Path(f).stem] = base_dir / sample_path
         else:
             print(f"Warning: no sample_file_path found in description file {f}")
@@ -99,8 +99,8 @@ def schema_to_rst(df: pd.DataFrame, title: str, preview_rows: int = 3) -> str:
     desc_df = None
 
     # read table and column descriptions if the description file is available in either input or output desc dir
-    files = list(Path(INPUT_DESC_DIR).glob("*.csv")) + list(
-        Path(OUTPUT_DESC_DIR).glob("*.csv")
+    files = list(Path("data_desc/inputs").glob("*.csv")) + list(
+        Path("data_desc/outputs").glob("*.csv")
     )
     files = [f for f in files if f.stem.lower() in title.lower()]
 
@@ -190,8 +190,7 @@ def schema_to_rst(df: pd.DataFrame, title: str, preview_rows: int = 3) -> str:
 def process_file(
     title: str,
     path: str,
-    s3_client=None,
-    bucket: str = "noaa-owp-dev",
+    s3_bucket: str,
 ) -> str:
     """Load a file (csv, parquet, gpkg, gdb) and return an RST schema string."""
     df = pd.DataFrame()
@@ -201,25 +200,12 @@ def process_file(
         return schema_to_rst(df, title)
 
     ext = os.path.splitext(path)[1].lower().strip()
+    s3_client = boto3.client("s3")
     try:
         if s3_client is None:
-            if ext == ".csv":
-                df = pd.read_csv(path, nrows=1000)  # sample for speed
-            elif ext == ".parquet":
-                df = pd.read_parquet(path, engine="pyarrow")
-            elif ext in [".gpkg", ".gdb"]:
-                if gpd is None:
-                    raise RuntimeError("geopandas required for GPKG/GDB")
-                layers = fiona.listlayers(path)
-                rst_blocks = []
-                for layer in layers:
-                    gdf = gpd.read_file(path, layer=layer, rows=1000)
-                    rst_blocks.append(schema_to_rst(gdf, f"{title} (layer: {layer})"))
-                return "\n\n".join(rst_blocks)
-            else:
-                return
+            raise RuntimeError("s3_client is not initialized")
         else:
-            response = s3_client.get_object(Bucket=bucket, Key=str(path).strip())
+            response = s3_client.get_object(Bucket=s3_bucket, Key=str(path).strip())
             if ext == ".csv":
                 df = pd.read_csv(
                     BytesIO(response["Body"].read()),
@@ -292,36 +278,45 @@ def deep_merge_keep_both(d1, d2):
 def process_schema(
     file_dict: dict[str, str],
     output_rst,
-    s3_client=None,
+    s3_bucket: str,
 ):
     all_schemas = ["Schemas", "=======", ""]
 
     for k, v in file_dict.items():
-        schema = process_file(k, v, s3_client=s3_client)
+        schema = process_file(k, v, s3_bucket)
         if schema is not None:
             all_schemas.append(schema)
             all_schemas.append("\n")
     all_schemas.append(".. toctree::\n   :maxdepth: 2")
     with open(output_rst, "w") as f:
         f.write("\n".join(all_schemas))
+    print(f"Schema documentation generated and saved to {output_rst}")
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--bucket", default="ngwpc-dev", help="S3 bucket name")
+    parser.add_argument(
+        "--prefix",
+        default="nwm-tools-data/regionalization/data/",
+        help="S3 prefix to include",
+    )
+    args = parser.parse_args()
+
+    file_path = Path(__file__).parent.parent / "source" / "tech_reference"
+
     # process input data schemas
-    s3_client = initialize_s3_client()
-    input_files = get_sample_data_files(Path(INPUT_DATA_DIR), Path(INPUT_DESC_DIR))
-    print("============ Creating schemas for input files ============")
+    input_files = get_sample_data_files(Path(args.prefix), Path("data_desc/inputs"))
+    print("====== Creating schemas for input files ======")
     pprint(input_files)
     process_schema(
-        dict(sorted(input_files.items())), INPUT_DATA_FILE, s3_client=s3_client
+        dict(sorted(input_files.items())), file_path / "input_data.rst", args.bucket
     )
 
     # process output data schemas
-    output_files = get_sample_data_files(Path(OUTPUT_DATA_DIR), Path(OUTPUT_DESC_DIR))
-    print("\n============ Creating schemas for output files ============")
+    output_files = get_sample_data_files(Path(args.prefix), Path("data_desc/outputs"))
+    print("\n====== Creating schemas for output files ======")
     pprint(output_files)
     process_schema(
-        dict(sorted(output_files.items())),
-        OUTPUT_DATA_FILE,
-        s3_client=s3_client,
+        dict(sorted(output_files.items())), file_path / "output_data.rst", args.bucket
     )

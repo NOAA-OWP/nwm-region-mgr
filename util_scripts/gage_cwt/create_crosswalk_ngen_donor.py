@@ -57,6 +57,7 @@ def resolve_nested_gages(
 
 
 def build_crosswalks(
+    domains: list,
     input_dir: Path,
     outdir: Path,
     gages_file: Path,
@@ -68,7 +69,7 @@ def build_crosswalks(
     vpu_col = "vpuid" if hf_version == "v2.2" else "vpu_id"
 
     """Build crosswalk parquet files for all calibration domains."""
-    domains = {
+    domains_dict = {
         "conus": "CONUS",
         "ak": "Alaska",
         "hi": "Hawaii",
@@ -78,13 +79,14 @@ def build_crosswalks(
     outdir.mkdir(exist_ok=True, parents=True)
     ngage = ncats = 0
 
-    for domain1, domain in domains.items():
-        outfile = Path(outdir, f"calib_gage_divide_{domain1}.parquet")
+    for domain in domains:
+        domain1 = domains_dict[domain]
+        outfile = Path(outdir, f"calib_gage_divide_{domain}.parquet")
         if outfile.exists():
-            print(f"Crosswalk file already exists for {domain}: {outfile}. Skip")
+            print(f"Crosswalk file already exists for {domain1}: {outfile}. Skip")
             continue
 
-        dir1 = Path(input_dir, domain).resolve(strict=True)
+        dir1 = Path(input_dir, domain1).resolve(strict=True)
         files = glob.glob(f"{dir1}/*.gpkg")
 
         df_cats = pd.DataFrame()
@@ -122,11 +124,12 @@ def build_crosswalks(
     df_gages = pd.read_csv(gages_file)
     df_gages["domain"] = df_gages["domain"].str.replace(" ", "_", regex=False)
 
-    for domain1, domain in domains.items():
-        outfile = Path(outdir, f"calib_gage_divide_{domain1}.parquet")
+    for domain in domains:
+        domain1 = domains_dict[domain]
+        outfile = Path(outdir, f"calib_gage_divide_{domain}.parquet")
         if not outfile.exists():
             print(
-                f"Crosswalk file not found for {domain} at expected location: {outfile}"
+                f"Crosswalk file not found for {domain1} at expected location: {outfile}"
             )
             continue
         df1 = pd.read_parquet(outfile)
@@ -135,26 +138,28 @@ def build_crosswalks(
         dup_divides = df1[df1[id_col].duplicated(keep=False)]
         if not dup_divides.empty:
             raise ValueError(
-                f"Duplicate divides still found in {domain} crosswalk after resolving nested gages: {dup_divides}"
+                f"Duplicate divides still found in {domain1} crosswalk after resolving nested gages: {dup_divides}"
             )
 
         # check to see if all calibration gages in gages_file are included in the crosswalk
         gages1 = df1["gage_id"].unique().tolist()
-        gages_nwm4 = df_gages[df_gages["domain"] == domain]["gage_id"].unique().tolist()
+        gages_nwm4 = (
+            df_gages[df_gages["domain"] == domain1]["gage_id"].unique().tolist()
+        )
         gages_missed = [g1 for g1 in gages_nwm4 if g1 not in gages1]
         gages_extra = [g1 for g1 in gages1 if g1 not in gages_nwm4]
 
         if gages_extra:
-            print(f"Extra basins found in crosswalk for {domain}: {gages_extra}")
+            print(f"Extra basins found in crosswalk for {domain1}: {gages_extra}")
         if gages_missed:
             print(
-                f"Number of missing calibration basins in crosswalk for {domain}: {len(gages_missed)}"
+                f"Number of missing calibration basins in crosswalk for {domain1}: {len(gages_missed)}"
             )
             gages_missed = (
                 gages_missed if len(gages_missed) <= 10 else gages_missed[:10]
             )
             print(
-                f"First {len(gages_missed)} missing calibration basins in crosswalk for {domain}: {gages_missed}"
+                f"First {len(gages_missed)} missing calibration basins in crosswalk for {domain1}: {gages_missed}"
             )
 
 
@@ -162,6 +167,14 @@ def main():
     parser = argparse.ArgumentParser(
         description="Build crosswalk parquet files for NWM calibration gages."
     )
+    parser.add_argument(
+        "--domains",
+        nargs="+",
+        choices=["conus", "ak", "hi", "prvi"],
+        default=["conus", "ak", "hi", "prvi"],
+        help="Domains to process (default: all).",
+    )
+
     parser.add_argument(
         "--input-dir",
         required=True,
@@ -195,7 +208,12 @@ def main():
 
     args = parser.parse_args()
     build_crosswalks(
-        args.input_dir, args.outdir, args.gages_file, args.nested_gages, args.hf_version
+        args.domains,
+        args.input_dir,
+        args.outdir,
+        args.gages_file,
+        args.nested_gages,
+        args.hf_version,
     )
 
 
